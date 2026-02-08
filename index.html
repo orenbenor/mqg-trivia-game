@@ -191,268 +191,376 @@
             <p class="muted">ניהול פעילות, יצירת שאלות, ומעקב אחרי ביצועי שחקנים.</p>
           </div>
           <div class="actions-row compact">
-            <button id="openQuestionBankBtn" class="secondary-btn">הכנס למאגר השאלות</button>
-            <button id="backToAdminMainBtn" class="ghost-btn hidden">חזרה ללוח המנהל</button>
+            <button id="openQuestionBankBtn" class="secondary-btn hidden" type="button">הכנס למאגר השאלות</button>
+            <button id="backToAdminMainBtn" class="ghost-btn hidden" type="button">חזרה ללוח המנהל</button>
             <button id="adminLogoutBtn" class="ghost-btn">התנתקות</button>
           </div>
         </div>
 
-        <div id="adminMainSections">
-          <section class="admin-section">
-            <div class="section-head">
-              <h3>ניהול מנהלים</h3>
-              <p id="adminSessionInfo" class="muted tight"></p>
-            </div>
-
-            <form id="adminUserForm" class="form-grid">
-              <label class="field">
-                <span>שם משתמש חדש</span>
-                <input id="adminUserNewUsername" type="text" maxlength="40" placeholder="למשל: נועה" />
-              </label>
-              <label class="field">
-                <span>סיסמה חדשה</span>
-                <input id="adminUserNewPassword" type="password" maxlength="80" placeholder="לפחות 8 תווים" />
-              </label>
-              <div class="actions-row">
-                <button id="createAdminUserBtn" type="submit" class="primary-btn">צור מנהל חדש</button>
-              </div>
-            </form>
-            <p id="adminUserFormMsg" class="form-msg hidden"></p>
-
-            <form id="adminPasswordForm" class="form-grid">
-              <label class="field">
-                <span>סיסמה נוכחית</span>
-                <input id="adminCurrentPassword" type="password" maxlength="100" placeholder="הזן סיסמה נוכחית" />
-              </label>
-              <label class="field">
-                <span>סיסמה חדשה</span>
-                <input id="adminNewPassword" type="password" maxlength="100" placeholder="לפחות 8 תווים" />
-              </label>
-              <label class="field">
-                <span>אימות סיסמה חדשה</span>
-                <input id="adminConfirmPassword" type="password" maxlength="100" placeholder="הזן שוב את הסיסמה החדשה" />
-              </label>
-              <div class="actions-row">
-                <button id="changeOwnPasswordBtn" type="submit" class="ghost-btn">עדכן את הסיסמה שלי</button>
-              </div>
-            </form>
-            <p id="adminPasswordFormMsg" class="form-msg hidden"></p>
-            <div id="adminUsersList" class="cards-list"></div>
-          </section>
-
-          <section class="admin-section">
-            <div class="section-head">
-              <h3>יצירת שאלות מטקסט ארוך</h3>
-              <p class="muted tight">הדבק טקסט או העלה קובץ, נתח אותו, וצור ממנו 5/10/15 שאלות.</p>
-            </div>
-
-            <div class="form-grid">
-              <label class="field full">
-                <span>טקסט לניתוח</span>
-                <textarea
-                  id="longTextInput"
-                  rows="10"
-                  placeholder="הדבק כאן טקסט ארוך בכל אורך..."
-                ></textarea>
-              </label>
-
-              <label class="field full">
-                <span>או העלאת קובץ טקסט</span>
-                <input id="longTextFileInput" type="file" accept=".txt,.md,.text" />
-              </label>
-
-              <label class="field">
-                <span>כמות שאלות ליצירה</span>
-                <select id="longTextQuestionCount">
-                  <option value="5">5</option>
-                  <option value="10" selected>10</option>
-                  <option value="15">15</option>
-                </select>
-              </label>
-
-              <label class="field">
-                <span>קטגוריה לשאלות</span>
-                <select id="longTextCategory">
-                  <option value="מערכת המשפט ומינויים">מערכת המשפט ומינויים</option>
-                  <option value="שוויון בנטל">שוויון בנטל</option>
-                  <option value="תקשורת ושקיפות">תקשורת ושקיפות</option>
-                  <option value="כלכלה ותחרות">כלכלה ותחרות</option>
-                  <option value="חברות ממשלתיות">חברות ממשלתיות</option>
-                  <option value="חושפי שחיתות">חושפי שחיתות</option>
-                  <option value="פעילות ציבורית">פעילות ציבורית</option>
-                </select>
-              </label>
-
-              <label class="field">
-                <span>סוג שאלות</span>
-                <select id="longTextKind">
-                  <option value="activity" selected>פעילות</option>
-                  <option value="success">הישג</option>
-                </select>
-              </label>
-
-              <label class="field">
-                <span>תאריך ייחוס</span>
-                <input id="longTextDate" type="date" />
-              </label>
-
-              <label class="field">
-                <span>שם מקור (אופציונלי)</span>
-                <input id="longTextSourceLabel" type="text" maxlength="120" placeholder="למשל: מסמך פנימי" />
-              </label>
-
-              <label class="field">
-                <span>קישור מקור (אופציונלי)</span>
-                <input id="longTextSourceUrl" type="url" placeholder="https://..." />
-              </label>
-            </div>
-
-            <div class="actions-row">
-              <button id="analyzeLongTextBtn" type="button" class="secondary-btn">קרא והבן את הכל</button>
-              <button id="generateLongTextDraftsBtn" type="button" class="primary-btn" disabled>צור שאלות מהטקסט</button>
-              <button id="approveAllTextDraftsBtn" type="button" class="ghost-btn" disabled>הוסף את כל השאלות שנוצרו</button>
-            </div>
-            <p id="longTextMsg" class="form-msg hidden"></p>
-            <div id="longTextDraftsPreview" class="cards-list"></div>
-          </section>
-
-          <div class="stats-grid" id="adminStats"></div>
-
-          <section class="admin-section">
-            <div class="section-head">
-              <h3>מעקב תוצאות שחקנים</h3>
-              <button id="clearAttemptsBtn" class="ghost-btn">ניקוי נתונים</button>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>שחקן</th>
-                    <th>ניקוד</th>
-                    <th>אחוז</th>
-                    <th>זמן</th>
-                    <th>תאריך</th>
-                  </tr>
-                </thead>
-                <tbody id="attemptsTableBody"></tbody>
-              </table>
-            </div>
-          </section>
-
-          <section class="admin-section">
-            <div class="section-head">
-              <h3>מדד למידה לפי נושא</h3>
-              <p class="muted tight">איפה שחקנים נופלים ולמה כדאי לחזק.</p>
-            </div>
-            <div id="learningMetricsList" class="cards-list"></div>
-          </section>
-
-          <section class="admin-section">
-            <h3>הוספת פעילות / הישג</h3>
-            <form id="activityForm" class="form-grid">
-              <label class="field">
-                <span>כותרת</span>
-                <input name="title" type="text" required maxlength="140" placeholder="למשל: עתירה לבג״ץ בנושא..." />
-              </label>
-
-              <label class="field">
-                <span>תאריך</span>
-                <input name="date" type="date" required />
-              </label>
-
-              <label class="field">
-                <span>קטגוריה</span>
-                <select name="category">
-                  <option value="מערכת המשפט ומינויים">מערכת המשפט ומינויים</option>
-                  <option value="שוויון בנטל">שוויון בנטל</option>
-                  <option value="תקשורת ושקיפות">תקשורת ושקיפות</option>
-                  <option value="כלכלה ותחרות">כלכלה ותחרות</option>
-                  <option value="חברות ממשלתיות">חברות ממשלתיות</option>
-                  <option value="חושפי שחיתות">חושפי שחיתות</option>
-                  <option value="פעילות ציבורית">פעילות ציבורית</option>
-                </select>
-              </label>
-
-              <label class="field">
-                <span>סוג</span>
-                <select name="kind">
-                  <option value="success" selected>הישג</option>
-                  <option value="activity">פעילות</option>
-                </select>
-              </label>
-
-              <label class="field full">
-                <span>רקע קצר</span>
-                <textarea name="context" rows="3" required placeholder="מה היה המהלך המרכזי?"></textarea>
-              </label>
-
-              <label class="field full">
-                <span>תוצאה / הישג בפועל</span>
-                <textarea name="outcome" rows="3" required placeholder="מה בפועל הושג או נקבע?"></textarea>
-              </label>
-
-              <label class="field">
-                <span>שם מקור</span>
-                <input name="sourceLabel" type="text" maxlength="120" placeholder="למשל: הודעת התנועה" />
-              </label>
-
-              <label class="field">
-                <span>קישור מקור</span>
-                <input name="sourceUrl" type="url" placeholder="https://..." />
-              </label>
-
-              <label class="field full">
-                <span>קבצים / תמונות (אופציונלי)</span>
-                <input id="adminFilesInput" name="files" type="file" multiple />
-              </label>
-
-              <div class="actions-row">
-                <button type="submit" class="primary-btn">שמור פעילות</button>
-              </div>
-            </form>
-            <p id="activityFormMsg" class="form-msg hidden"></p>
-          </section>
-
-          <section class="admin-section">
-            <h3>פעילויות שהוזנו</h3>
-            <div id="activitiesList" class="cards-list"></div>
-          </section>
-
-          <section class="admin-section">
-            <h3>טיוטות שאלות לאישור</h3>
-            <div id="draftsList" class="cards-list"></div>
-          </section>
-
-          <section class="admin-section">
-            <h3>שאלות שאושרו למאגר</h3>
-            <div id="customQuestionsList" class="cards-list"></div>
-          </section>
+        <div class="admin-tabs" role="tablist" aria-label="ניווט מנהל">
+          <button
+            class="admin-tab-btn active"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            data-admin-tab-target="dashboard"
+          >
+            דשבורד
+          </button>
+          <button
+            class="admin-tab-btn"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            data-admin-tab-target="content"
+          >
+            יצירת תוכן
+          </button>
+          <button
+            class="admin-tab-btn"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            data-admin-tab-target="questionBank"
+          >
+            מאגר שאלות
+          </button>
+          <button
+            class="admin-tab-btn"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            data-admin-tab-target="learning"
+          >
+            למידה וביצועים
+          </button>
+          <button
+            class="admin-tab-btn"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            data-admin-tab-target="security"
+          >
+            מנהלים ואבטחה
+          </button>
         </div>
 
-        <section id="adminQuestionBankSection" class="admin-section hidden">
-          <div class="section-head">
-            <h3>מאגר השאלות - עריכה וניהול</h3>
-            <p id="questionCountExact" class="muted tight"></p>
-          </div>
-          <p class="muted">כאן ניתן לערוך, להסיר ולהחזיר שאלות באופן ממוקד.</p>
-          <div class="form-grid compact question-tools">
-            <label class="field full">
-              <span>חיפוש שאלה</span>
-              <input
-                id="questionSearchInput"
-                type="text"
-                placeholder="חפש לפי טקסט שאלה / קטגוריה / מקור"
-              />
-            </label>
-          </div>
-          <div class="actions-row compact">
-            <button id="runQuestionAuditBtn" class="secondary-btn" type="button">הרץ Audit לפני פרסום</button>
-            <button id="clearQuestionAuditBtn" class="ghost-btn" type="button">נקה דוח Audit</button>
-          </div>
-          <p id="questionAuditStatus" class="form-msg hidden"></p>
-          <div id="questionAuditResults" class="cards-list hidden"></div>
-          <div id="allQuestionsList" class="cards-list"></div>
-        </section>
+        <div id="adminMainSections">
+          <section
+            class="admin-tab-panel"
+            data-admin-tab-panel="dashboard"
+            role="tabpanel"
+            aria-hidden="false"
+          >
+            <section class="admin-section admin-section-first">
+              <div class="section-head">
+                <h3>תמונת מצב</h3>
+                <p class="muted tight">סקירה מהירה של נתוני המערכת, תוכן ולמידה.</p>
+              </div>
+              <div class="stats-grid" id="adminStats"></div>
+            </section>
+
+            <section class="admin-section">
+              <div class="section-head">
+                <h3>פעולות מהירות</h3>
+                <p class="muted tight">מעבר מהיר לאזורים המרכזיים בלוח הניהול.</p>
+              </div>
+              <div class="actions-row">
+                <button type="button" class="secondary-btn" data-admin-jump-tab="content">
+                  יצירת תוכן ושאלות
+                </button>
+                <button type="button" class="ghost-btn" data-admin-jump-tab="questionBank">
+                  מעבר למאגר השאלות
+                </button>
+                <button type="button" class="ghost-btn" data-admin-jump-tab="learning">
+                  צפייה בתוצאות וניתוח
+                </button>
+              </div>
+            </section>
+          </section>
+
+          <section
+            class="admin-tab-panel hidden"
+            data-admin-tab-panel="content"
+            role="tabpanel"
+            aria-hidden="true"
+          >
+            <section class="admin-section admin-section-first">
+              <div class="section-head">
+                <h3>יצירת שאלות מטקסט ארוך</h3>
+                <p class="muted tight">הדבק טקסט או העלה קובץ, נתח אותו, וצור ממנו 5/10/15 שאלות.</p>
+              </div>
+
+              <div class="form-grid">
+                <label class="field full">
+                  <span>טקסט לניתוח</span>
+                  <textarea
+                    id="longTextInput"
+                    rows="10"
+                    placeholder="הדבק כאן טקסט ארוך בכל אורך..."
+                  ></textarea>
+                </label>
+
+                <label class="field full">
+                  <span>או העלאת קובץ טקסט</span>
+                  <input id="longTextFileInput" type="file" accept=".txt,.md,.text" />
+                </label>
+
+                <label class="field">
+                  <span>כמות שאלות ליצירה</span>
+                  <select id="longTextQuestionCount">
+                    <option value="5">5</option>
+                    <option value="10" selected>10</option>
+                    <option value="15">15</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>קטגוריה לשאלות</span>
+                  <select id="longTextCategory">
+                    <option value="מערכת המשפט ומינויים">מערכת המשפט ומינויים</option>
+                    <option value="שוויון בנטל">שוויון בנטל</option>
+                    <option value="תקשורת ושקיפות">תקשורת ושקיפות</option>
+                    <option value="כלכלה ותחרות">כלכלה ותחרות</option>
+                    <option value="חברות ממשלתיות">חברות ממשלתיות</option>
+                    <option value="חושפי שחיתות">חושפי שחיתות</option>
+                    <option value="פעילות ציבורית">פעילות ציבורית</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>סוג שאלות</span>
+                  <select id="longTextKind">
+                    <option value="activity" selected>פעילות</option>
+                    <option value="success">הישג</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>תאריך ייחוס</span>
+                  <input id="longTextDate" type="date" />
+                </label>
+
+                <label class="field">
+                  <span>שם מקור (אופציונלי)</span>
+                  <input id="longTextSourceLabel" type="text" maxlength="120" placeholder="למשל: מסמך פנימי" />
+                </label>
+
+                <label class="field">
+                  <span>קישור מקור (אופציונלי)</span>
+                  <input id="longTextSourceUrl" type="url" placeholder="https://..." />
+                </label>
+              </div>
+
+              <div class="actions-row">
+                <button id="analyzeLongTextBtn" type="button" class="secondary-btn">קרא והבן את הכל</button>
+                <button id="generateLongTextDraftsBtn" type="button" class="primary-btn" disabled>צור שאלות מהטקסט</button>
+                <button id="approveAllTextDraftsBtn" type="button" class="ghost-btn" disabled>הוסף את כל השאלות שנוצרו</button>
+              </div>
+              <p id="longTextMsg" class="form-msg hidden"></p>
+              <div id="longTextDraftsPreview" class="cards-list"></div>
+            </section>
+
+            <section class="admin-section">
+              <h3>הוספת פעילות / הישג</h3>
+              <form id="activityForm" class="form-grid">
+                <label class="field">
+                  <span>כותרת</span>
+                  <input name="title" type="text" required maxlength="140" placeholder="למשל: עתירה לבג״ץ בנושא..." />
+                </label>
+
+                <label class="field">
+                  <span>תאריך</span>
+                  <input name="date" type="date" required />
+                </label>
+
+                <label class="field">
+                  <span>קטגוריה</span>
+                  <select name="category">
+                    <option value="מערכת המשפט ומינויים">מערכת המשפט ומינויים</option>
+                    <option value="שוויון בנטל">שוויון בנטל</option>
+                    <option value="תקשורת ושקיפות">תקשורת ושקיפות</option>
+                    <option value="כלכלה ותחרות">כלכלה ותחרות</option>
+                    <option value="חברות ממשלתיות">חברות ממשלתיות</option>
+                    <option value="חושפי שחיתות">חושפי שחיתות</option>
+                    <option value="פעילות ציבורית">פעילות ציבורית</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>סוג</span>
+                  <select name="kind">
+                    <option value="success" selected>הישג</option>
+                    <option value="activity">פעילות</option>
+                  </select>
+                </label>
+
+                <label class="field full">
+                  <span>רקע קצר</span>
+                  <textarea name="context" rows="3" required placeholder="מה היה המהלך המרכזי?"></textarea>
+                </label>
+
+                <label class="field full">
+                  <span>תוצאה / הישג בפועל</span>
+                  <textarea name="outcome" rows="3" required placeholder="מה בפועל הושג או נקבע?"></textarea>
+                </label>
+
+                <label class="field">
+                  <span>שם מקור</span>
+                  <input name="sourceLabel" type="text" maxlength="120" placeholder="למשל: הודעת התנועה" />
+                </label>
+
+                <label class="field">
+                  <span>קישור מקור</span>
+                  <input name="sourceUrl" type="url" placeholder="https://..." />
+                </label>
+
+                <label class="field full">
+                  <span>קבצים / תמונות (אופציונלי)</span>
+                  <input id="adminFilesInput" name="files" type="file" multiple />
+                </label>
+
+                <div class="actions-row">
+                  <button type="submit" class="primary-btn">שמור פעילות</button>
+                </div>
+              </form>
+              <p id="activityFormMsg" class="form-msg hidden"></p>
+            </section>
+
+            <section class="admin-section">
+              <h3>פעילויות שהוזנו</h3>
+              <div id="activitiesList" class="cards-list"></div>
+            </section>
+
+            <section class="admin-section">
+              <h3>טיוטות שאלות לאישור</h3>
+              <div id="draftsList" class="cards-list"></div>
+            </section>
+
+            <section class="admin-section">
+              <h3>שאלות שאושרו למאגר</h3>
+              <div id="customQuestionsList" class="cards-list"></div>
+            </section>
+          </section>
+
+          <section
+            id="adminQuestionBankSection"
+            class="admin-tab-panel hidden"
+            data-admin-tab-panel="questionBank"
+            role="tabpanel"
+            aria-hidden="true"
+          >
+            <section class="admin-section admin-section-first">
+              <div class="section-head">
+                <h3>מאגר השאלות - עריכה וניהול</h3>
+                <p id="questionCountExact" class="muted tight"></p>
+              </div>
+              <p class="muted">כאן ניתן לערוך, להסיר ולהחזיר שאלות באופן ממוקד.</p>
+              <div class="form-grid compact question-tools">
+                <label class="field full">
+                  <span>חיפוש שאלה</span>
+                  <input
+                    id="questionSearchInput"
+                    type="text"
+                    placeholder="חפש לפי טקסט שאלה / קטגוריה / מקור"
+                  />
+                </label>
+              </div>
+              <div class="actions-row compact">
+                <button id="runQuestionAuditBtn" class="secondary-btn" type="button">הרץ Audit לפני פרסום</button>
+                <button id="clearQuestionAuditBtn" class="ghost-btn" type="button">נקה דוח Audit</button>
+              </div>
+              <p id="questionAuditStatus" class="form-msg hidden"></p>
+              <div id="questionAuditResults" class="cards-list hidden"></div>
+              <div id="allQuestionsList" class="cards-list"></div>
+            </section>
+          </section>
+
+          <section
+            class="admin-tab-panel hidden"
+            data-admin-tab-panel="learning"
+            role="tabpanel"
+            aria-hidden="true"
+          >
+            <section class="admin-section admin-section-first">
+              <div class="section-head">
+                <h3>מעקב תוצאות שחקנים</h3>
+                <button id="clearAttemptsBtn" class="ghost-btn">ניקוי נתונים</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>שחקן</th>
+                      <th>ניקוד</th>
+                      <th>אחוז</th>
+                      <th>זמן</th>
+                      <th>תאריך</th>
+                    </tr>
+                  </thead>
+                  <tbody id="attemptsTableBody"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="admin-section">
+              <div class="section-head">
+                <h3>מדד למידה לפי נושא</h3>
+                <p class="muted tight">איפה שחקנים נופלים ולמה כדאי לחזק.</p>
+              </div>
+              <div id="learningMetricsList" class="cards-list"></div>
+            </section>
+          </section>
+
+          <section
+            class="admin-tab-panel hidden"
+            data-admin-tab-panel="security"
+            role="tabpanel"
+            aria-hidden="true"
+          >
+            <section class="admin-section admin-section-first">
+              <div class="section-head">
+                <h3>ניהול מנהלים</h3>
+                <p id="adminSessionInfo" class="muted tight"></p>
+              </div>
+
+              <form id="adminUserForm" class="form-grid">
+                <label class="field">
+                  <span>שם משתמש חדש</span>
+                  <input id="adminUserNewUsername" type="text" maxlength="40" placeholder="למשל: נועה" />
+                </label>
+                <label class="field">
+                  <span>סיסמה חדשה</span>
+                  <input id="adminUserNewPassword" type="password" maxlength="80" placeholder="לפחות 8 תווים" />
+                </label>
+                <div class="actions-row">
+                  <button id="createAdminUserBtn" type="submit" class="primary-btn">צור מנהל חדש</button>
+                </div>
+              </form>
+              <p id="adminUserFormMsg" class="form-msg hidden"></p>
+
+              <form id="adminPasswordForm" class="form-grid">
+                <label class="field">
+                  <span>סיסמה נוכחית</span>
+                  <input id="adminCurrentPassword" type="password" maxlength="100" placeholder="הזן סיסמה נוכחית" />
+                </label>
+                <label class="field">
+                  <span>סיסמה חדשה</span>
+                  <input id="adminNewPassword" type="password" maxlength="100" placeholder="לפחות 8 תווים" />
+                </label>
+                <label class="field">
+                  <span>אימות סיסמה חדשה</span>
+                  <input id="adminConfirmPassword" type="password" maxlength="100" placeholder="הזן שוב את הסיסמה החדשה" />
+                </label>
+                <div class="actions-row">
+                  <button id="changeOwnPasswordBtn" type="submit" class="ghost-btn">עדכן את הסיסמה שלי</button>
+                </div>
+              </form>
+              <p id="adminPasswordFormMsg" class="form-msg hidden"></p>
+              <div id="adminUsersList" class="cards-list"></div>
+            </section>
+          </section>
+        </div>
       </section>
 
       <footer class="footer-note">

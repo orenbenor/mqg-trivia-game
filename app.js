@@ -800,6 +800,7 @@ const gameState = {
 
 const adminState = {
   mode: "main",
+  tab: "dashboard",
   currentAdmin: null,
   longTextAnalysis: null,
   lastLongTextBatchDraftIds: [],
@@ -905,6 +906,8 @@ const dom = {
   questionAuditStatus: document.getElementById("questionAuditStatus"),
   questionAuditResults: document.getElementById("questionAuditResults"),
   allQuestionsList: document.getElementById("allQuestionsList"),
+  adminTabButtons: Array.from(document.querySelectorAll("[data-admin-tab-target]")),
+  adminTabPanels: Array.from(document.querySelectorAll("[data-admin-tab-panel]")),
 };
 
 const backendConfig = resolveBackendConfig();
@@ -1068,13 +1071,31 @@ function bindEvents() {
     ensureMusicPlayback();
   });
 
-  dom.openQuestionBankBtn.addEventListener("click", () => {
-    setAdminMode("questionBank");
-    renderAllQuestionsManager();
+  if (dom.openQuestionBankBtn) {
+    dom.openQuestionBankBtn.addEventListener("click", () => {
+      setAdminMode("questionBank");
+      renderAllQuestionsManager();
+    });
+  }
+
+  if (dom.backToAdminMainBtn) {
+    dom.backToAdminMainBtn.addEventListener("click", () => {
+      setAdminMode("main");
+    });
+  }
+
+  dom.adminTabButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const tab = normalizeSpace(button.dataset.adminTabTarget);
+      setAdminTab(tab);
+    });
   });
 
-  dom.backToAdminMainBtn.addEventListener("click", () => {
-    setAdminMode("main");
+  document.querySelectorAll("[data-admin-jump-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const tab = normalizeSpace(button.dataset.adminJumpTab);
+      setAdminTab(tab);
+    });
   });
 
   dom.resetQuestionCyclesPublicBtn.addEventListener("click", resetQuestionCyclesFlow);
@@ -2296,14 +2317,50 @@ async function refreshAdminUsersFromBackend() {
   writeStorage(STORAGE_KEYS.adminUsers, normalized);
 }
 
-function setAdminMode(mode) {
-  adminState.mode = mode === "questionBank" ? "questionBank" : "main";
-  const showQuestionBank = adminState.mode === "questionBank";
+function normalizeAdminTab(value) {
+  const raw = normalizeSpace(value).toLowerCase();
+  if (raw === "content") {
+    return "content";
+  }
+  if (raw === "questionbank") {
+    return "questionBank";
+  }
+  if (raw === "learning") {
+    return "learning";
+  }
+  if (raw === "security") {
+    return "security";
+  }
+  return "dashboard";
+}
 
-  dom.adminMainSections.classList.toggle("hidden", showQuestionBank);
-  dom.adminQuestionBankSection.classList.toggle("hidden", !showQuestionBank);
-  dom.openQuestionBankBtn.classList.toggle("hidden", showQuestionBank);
-  dom.backToAdminMainBtn.classList.toggle("hidden", !showQuestionBank);
+function setAdminTab(tab) {
+  const nextTab = normalizeAdminTab(tab);
+  adminState.tab = nextTab;
+  adminState.mode = nextTab === "questionBank" ? "questionBank" : "main";
+
+  dom.adminTabButtons.forEach((button) => {
+    const isActive = normalizeSpace(button.dataset.adminTabTarget) === nextTab;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", isActive ? "true" : "false");
+    button.tabIndex = isActive ? 0 : -1;
+  });
+
+  dom.adminTabPanels.forEach((panel) => {
+    const isActive = normalizeSpace(panel.dataset.adminTabPanel) === nextTab;
+    panel.classList.toggle("hidden", !isActive);
+    panel.setAttribute("aria-hidden", isActive ? "false" : "true");
+  });
+
+  if (nextTab === "questionBank") {
+    renderAllQuestionsManager();
+    renderQuestionAuditReport();
+  }
+}
+
+function setAdminMode(mode) {
+  const nextTab = mode === "questionBank" ? "questionBank" : "dashboard";
+  setAdminTab(nextTab);
 }
 
 function normalizeAdminUsername(value) {
