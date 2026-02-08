@@ -1,0 +1,56 @@
+services:
+  - type: web
+    name: mqg-trivia-backend
+    env: node
+    rootDir: backend
+    plan: free
+    autoDeploy: true
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DB_PATH
+        value: ./data/mqg.sqlite
+      - key: BACKUP_DIR
+        value: ./backups
+      - key: BACKUP_INTERVAL_MINUTES
+        value: 60
+      - key: BACKUP_KEEP_FILES
+        value: 48
+      - key: SESSION_DAYS
+        value: 7
+      - key: SESSION_COOKIE_SAMESITE
+        value: none
+      - key: LOGIN_RATE_WINDOW_MS
+        value: 60000
+      - key: LOGIN_RATE_MAX
+        value: 20
+      - key: LOGIN_LOCK_THRESHOLD
+        value: 6
+      - key: LOGIN_LOCK_MS
+        value: 900000
+      - key: PUBLIC_RATE_WINDOW_MS
+        value: 60000
+      - key: PUBLIC_RATE_MAX
+        value: 90
+      - key: MIN_PASSWORD_LENGTH
+        value: 8
+      - key: PUBLIC_WRITE_KEY
+        value: a80732e8237d1cdb0e35c0ed1c4e046e2381247a0e9eaadb
+      - key: CORS_ORIGIN
+        value: https://mqg-trivia-game.onrender.com
+      - key: DEFAULT_ADMIN_USERNAME
+        sync: false
+      - key: DEFAULT_ADMIN_PASSWORD
+        sync: false
+
+  - type: static
+    name: mqg-trivia-game
+    rootDir: .
+    buildCommand: npm install && npm run build
+    publishPath: dist
+    pullRequestPreviewsEnabled: false

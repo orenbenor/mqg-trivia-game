@@ -1,0 +1,10 @@
+{
+  "name": "mqg-trivia-game",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Static web app for MQG trivia game",
+  "scripts": {
+    "check": "node --check app.js",
+    "build": "node scripts/build-dist.mjs"
+  }
+}

@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="משחק טריוויה חינוכי בעברית על פעילות עדכנית של התנועה לאיכות השלטון."
+    />
+    <meta name="theme-color" content="#0A3A6E" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="טריוויה - התנועה לאיכות השלטון" />
+    <meta
+      property="og:description"
+      content="משחק טריוויה חינוכי, עדכני ומהיר, עם הסברים ומקורות."
+    />
+    <meta property="og:image" content="assets/icons/icon.svg" />
+    <meta property="og:locale" content="he_IL" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <title>טריוויה - התנועה לאיכות השלטון</title>
+    <link rel="icon" type="image/svg+xml" href="assets/icons/icon.svg" />
+    <link rel="apple-touch-icon" href="assets/icons/icon.svg" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="back-glow glow-a"></div>
+    <div class="back-glow glow-b"></div>
+
+    <main class="app-shell">
+      <header class="brand-header">
+        <div class="brand-mark" aria-hidden="true">
+          <img
+            class="official-logo"
+            src="https://mqg.org.il/wp-content/uploads/2024/02/MQG-FULL-HORIZONTAL-LOGO-white-.png"
+            alt="MQG in Israel"
+            loading="lazy"
+          />
+        </div>
+        <div>
+          <p class="eyebrow">משחק לימודי פנימי</p>
+          <h1>התנועה לאיכות השלטון - טריוויה 2025+</h1>
+          <p class="subtitle">
+            המשחק מתמקד בפעילות ובהצלחות עדכניות. בכל שאלה יש הסבר וקישור למקור.
+          </p>
+        </div>
+      </header>
+
+      <section id="screenLanding" class="panel screen active">
+        <h2>איך תרצה להיכנס?</h2>
+        <div class="entry-grid">
+          <article class="entry-card">
+            <h3>משחק מהיר</h3>
+            <p>התחלת משחק תוך שניות: שם שחקן, ניקוד ומעקב ביצועים.</p>
+            <button id="goQuickBtn" class="primary-btn">למשחק מהיר</button>
+          </article>
+
+          <article class="entry-card">
+            <h3>משחק מהיר עונתי</h3>
+            <p>שאלות ממוקדות על פעילות התנועה מאוקטובר 2025 ומעלה בלבד.</p>
+            <button id="goSeasonalQuickBtn" class="secondary-btn">למשחק מהיר עונתי</button>
+          </article>
+
+          <article class="entry-card admin-entry">
+            <h3>כניסת מנהל</h3>
+            <p>מעקב אחרי שחקנים, הוספת פעילויות, יצירת שאלות לאישור ועדכון המאגר.</p>
+            <button id="goAdminBtn" class="secondary-btn">כניסת מנהל</button>
+          </article>
+        </div>
+      </section>
+
+      <section id="screenQuickSetup" class="panel screen hidden">
+        <h2>משחק מהיר</h2>
+        <p id="quickModeNote" class="muted tight"></p>
+        <div class="form-grid">
+          <label class="field">
+            <span>מה שמך?</span>
+            <input id="playerNameInput" type="text" maxlength="40" placeholder="למשל: רוני" />
+          </label>
+
+          <label class="field">
+            <span>כמות שאלות</span>
+            <select id="questionCountSelect">
+              <option value="3">3</option>
+              <option value="10">10</option>
+              <option value="15" selected>15</option>
+              <option value="20">20</option>
+              <option value="30">30</option>
+              <option value="all">כל המאגר</option>
+            </select>
+          </label>
+
+          <label class="field checkbox-field">
+            <input id="showLearningToggle" type="checkbox" checked />
+            <span>להציג "כרטיס למידה" לפני כל שאלה</span>
+          </label>
+        </div>
+
+        <div class="actions-row">
+          <button id="startQuickBtn" class="primary-btn">התחל משחק</button>
+          <button data-go="landing" class="ghost-btn">חזרה</button>
+        </div>
+        <p id="quickSetupError" class="error-text hidden"></p>
+      </section>
+
+      <section id="screenAdminLogin" class="panel screen hidden">
+        <h2>כניסת מנהל</h2>
+        <p class="muted">התחברות מאובטחת דרך שרת המערכת.</p>
+        <div class="form-grid compact">
+          <label class="field">
+            <span>שם משתמש</span>
+            <input id="adminUsernameInput" type="text" maxlength="40" placeholder="הקלד שם משתמש" />
+          </label>
+          <label class="field">
+            <span>סיסמה</span>
+            <input id="adminPasswordInput" type="password" maxlength="80" placeholder="הקלד סיסמה" />
+          </label>
+        </div>
+        <div class="actions-row">
+          <button id="loginAdminBtn" class="primary-btn">כניסה</button>
+          <button data-go="landing" class="ghost-btn">חזרה</button>
+        </div>
+        <p id="adminLoginError" class="error-text hidden"></p>
+      </section>
+
+      <section id="screenQuiz" class="panel screen hidden">
+        <div class="quiz-top">
+          <p id="quizPlayerName" class="pill"></p>
+          <p id="quizProgress" class="pill"></p>
+          <p id="quizScore" class="pill"></p>
+          <div id="timerWrap" class="timer-wrap">
+            <div id="hourglassIcon" class="hourglass" aria-hidden="true"></div>
+            <div class="timer-text-wrap">
+              <p class="timer-label">זמן לשאלה</p>
+              <p id="timerText" class="timer-text">30</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="quiz-tools">
+          <button id="resetQuestionCyclesPublicBtn" class="ghost-btn" type="button">
+            אתחל וערבב שאלות מחדש
+          </button>
+          <p id="questionCycleResetMsg" class="form-msg hidden"></p>
+        </div>
+
+        <div class="progress-track" aria-hidden="true">
+          <div id="quizProgressFill" class="progress-fill"></div>
+        </div>
+
+        <article class="question-card">
+          <div class="question-hero">
+            <img id="questionBanner" class="question-banner" alt="באנר שאלה" />
+            <div class="question-overlay"></div>
+            <h2 id="questionTitle" class="question-title in-hero"></h2>
+          </div>
+
+          <p id="questionLearn" class="learn-box"></p>
+
+          <div id="optionsWrap" class="options-wrap"></div>
+
+          <section id="feedbackCard" class="feedback-card hidden">
+            <h3 id="feedbackHeadline"></h3>
+            <p id="feedbackText"></p>
+            <ul id="feedbackWrongReasons" class="feedback-reasons"></ul>
+            <button id="feedbackDeepExplainBtn" type="button" class="ghost-btn">הסבר יותר לעומק</button>
+            <ul id="feedbackDeepReasons" class="feedback-reasons deep-reasons hidden"></ul>
+            <ul id="feedbackSources" class="sources-list"></ul>
+            <button id="nextQuestionBtn" class="primary-btn">לשאלה הבאה</button>
+          </section>
+        </article>
+      </section>
+
+      <section id="screenResult" class="panel screen hidden">
+        <h2>סיכום</h2>
+        <p id="resultMain" class="result-main"></p>
+        <p id="resultSub" class="muted"></p>
+
+        <div id="wrongAnswersWrap" class="wrong-answers"></div>
+
+        <div class="actions-row">
+          <button id="playAgainBtn" class="primary-btn">משחק נוסף</button>
+          <button data-go="landing" class="secondary-btn">חזרה למסך הראשי</button>
+        </div>
+      </section>
+
+      <section id="screenAdminPanel" class="panel screen hidden">
+        <div class="admin-head">
+          <div>
+            <h2>לוח מנהל</h2>
+            <p class="muted">ניהול פעילות, יצירת שאלות, ומעקב אחרי ביצועי שחקנים.</p>
+          </div>
+          <div class="actions-row compact">
+            <button id="openQuestionBankBtn" class="secondary-btn">הכנס למאגר השאלות</button>
+            <button id="backToAdminMainBtn" class="ghost-btn hidden">חזרה ללוח המנהל</button>
+            <button id="adminLogoutBtn" class="ghost-btn">התנתקות</button>
+          </div>
+        </div>
+
+        <div id="adminMainSections">
+          <section class="admin-section">
+            <div class="section-head">
+              <h3>ניהול מנהלים</h3>
+              <p id="adminSessionInfo" class="muted tight"></p>
+            </div>
+
+            <form id="adminUserForm" class="form-grid">
+              <label class="field">
+                <span>שם משתמש חדש</span>
+                <input id="adminUserNewUsername" type="text" maxlength="40" placeholder="למשל: נועה" />
+              </label>
+              <label class="field">
+                <span>סיסמה חדשה</span>
+                <input id="adminUserNewPassword" type="password" maxlength="80" placeholder="לפחות 8 תווים" />
+              </label>
+              <div class="actions-row">
+                <button id="createAdminUserBtn" type="submit" class="primary-btn">צור מנהל חדש</button>
+              </div>
+            </form>
+            <p id="adminUserFormMsg" class="form-msg hidden"></p>
+
+            <form id="adminPasswordForm" class="form-grid">
+              <label class="field">
+                <span>סיסמה נוכחית</span>
+                <input id="adminCurrentPassword" type="password" maxlength="100" placeholder="הזן סיסמה נוכחית" />
+              </label>
+              <label class="field">
+                <span>סיסמה חדשה</span>
+                <input id="adminNewPassword" type="password" maxlength="100" placeholder="לפחות 8 תווים" />
+              </label>
+              <label class="field">
+                <span>אימות סיסמה חדשה</span>
+                <input id="adminConfirmPassword" type="password" maxlength="100" placeholder="הזן שוב את הסיסמה החדשה" />
+              </label>
+              <div class="actions-row">
+                <button id="changeOwnPasswordBtn" type="submit" class="ghost-btn">עדכן את הסיסמה שלי</button>
+              </div>
+            </form>
+            <p id="adminPasswordFormMsg" class="form-msg hidden"></p>
+            <div id="adminUsersList" class="cards-list"></div>
+          </section>
+
+          <section class="admin-section">
+            <div class="section-head">
+              <h3>יצירת שאלות מטקסט ארוך</h3>
+              <p class="muted tight">הדבק טקסט או העלה קובץ, נתח אותו, וצור ממנו 5/10/15 שאלות.</p>
+            </div>
+
+            <div class="form-grid">
+              <label class="field full">
+                <span>טקסט לניתוח</span>
+                <textarea
+                  id="longTextInput"
+                  rows="10"
+                  placeholder="הדבק כאן טקסט ארוך בכל אורך..."
+                ></textarea>
+              </label>
+
+              <label class="field full">
+                <span>או העלאת קובץ טקסט</span>
+                <input id="longTextFileInput" type="file" accept=".txt,.md,.text" />
+              </label>
+
+              <label class="field">
+                <span>כמות שאלות ליצירה</span>
+                <select id="longTextQuestionCount">
+                  <option value="5">5</option>
+                  <option value="10" selected>10</option>
+                  <option value="15">15</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>קטגוריה לשאלות</span>
+                <select id="longTextCategory">
+                  <option value="מערכת המשפט ומינויים">מערכת המשפט ומינויים</option>
+                  <option value="שוויון בנטל">שוויון בנטל</option>
+                  <option value="תקשורת ושקיפות">תקשורת ושקיפות</option>
+                  <option value="כלכלה ותחרות">כלכלה ותחרות</option>
+                  <option value="חברות ממשלתיות">חברות ממשלתיות</option>
+                  <option value="חושפי שחיתות">חושפי שחיתות</option>
+                  <option value="פעילות ציבורית">פעילות ציבורית</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>סוג שאלות</span>
+                <select id="longTextKind">
+                  <option value="activity" selected>פעילות</option>
+                  <option value="success">הישג</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>תאריך ייחוס</span>
+                <input id="longTextDate" type="date" />
+              </label>
+
+              <label class="field">
+                <span>שם מקור (אופציונלי)</span>
+                <input id="longTextSourceLabel" type="text" maxlength="120" placeholder="למשל: מסמך פנימי" />
+              </label>
+
+              <label class="field">
+                <span>קישור מקור (אופציונלי)</span>
+                <input id="longTextSourceUrl" type="url" placeholder="https://..." />
+              </label>
+            </div>
+
+            <div class="actions-row">
+              <button id="analyzeLongTextBtn" type="button" class="secondary-btn">קרא והבן את הכל</button>
+              <button id="generateLongTextDraftsBtn" type="button" class="primary-btn" disabled>צור שאלות מהטקסט</button>
+              <button id="approveAllTextDraftsBtn" type="button" class="ghost-btn" disabled>הוסף את כל השאלות שנוצרו</button>
+            </div>
+            <p id="longTextMsg" class="form-msg hidden"></p>
+            <div id="longTextDraftsPreview" class="cards-list"></div>
+          </section>
+
+          <div class="stats-grid" id="adminStats"></div>
+
+          <section class="admin-section">
+            <div class="section-head">
+              <h3>מעקב תוצאות שחקנים</h3>
+              <button id="clearAttemptsBtn" class="ghost-btn">ניקוי נתונים</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>שחקן</th>
+                    <th>ניקוד</th>
+                    <th>אחוז</th>
+                    <th>זמן</th>
+                    <th>תאריך</th>
+                  </tr>
+                </thead>
+                <tbody id="attemptsTableBody"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="admin-section">
+            <div class="section-head">
+              <h3>מדד למידה לפי נושא</h3>
+              <p class="muted tight">איפה שחקנים נופלים ולמה כדאי לחזק.</p>
+            </div>
+            <div id="learningMetricsList" class="cards-list"></div>
+          </section>
+
+          <section class="admin-section">
+            <h3>הוספת פעילות / הישג</h3>
+            <form id="activityForm" class="form-grid">
+              <label class="field">
+                <span>כותרת</span>
+                <input name="title" type="text" required maxlength="140" placeholder="למשל: עתירה לבג״ץ בנושא..." />
+              </label>
+
+              <label class="field">
+                <span>תאריך</span>
+                <input name="date" type="date" required />
+              </label>
+
+              <label class="field">
+                <span>קטגוריה</span>
+                <select name="category">
+                  <option value="מערכת המשפט ומינויים">מערכת המשפט ומינויים</option>
+                  <option value="שוויון בנטל">שוויון בנטל</option>
+                  <option value="תקשורת ושקיפות">תקשורת ושקיפות</option>
+                  <option value="כלכלה ותחרות">כלכלה ותחרות</option>
+                  <option value="חברות ממשלתיות">חברות ממשלתיות</option>
+                  <option value="חושפי שחיתות">חושפי שחיתות</option>
+                  <option value="פעילות ציבורית">פעילות ציבורית</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>סוג</span>
+                <select name="kind">
+                  <option value="success" selected>הישג</option>
+                  <option value="activity">פעילות</option>
+                </select>
+              </label>
+
+              <label class="field full">
+                <span>רקע קצר</span>
+                <textarea name="context" rows="3" required placeholder="מה היה המהלך המרכזי?"></textarea>
+              </label>
+
+              <label class="field full">
+                <span>תוצאה / הישג בפועל</span>
+                <textarea name="outcome" rows="3" required placeholder="מה בפועל הושג או נקבע?"></textarea>
+              </label>
+
+              <label class="field">
+                <span>שם מקור</span>
+                <input name="sourceLabel" type="text" maxlength="120" placeholder="למשל: הודעת התנועה" />
+              </label>
+
+              <label class="field">
+                <span>קישור מקור</span>
+                <input name="sourceUrl" type="url" placeholder="https://..." />
+              </label>
+
+              <label class="field full">
+                <span>קבצים / תמונות (אופציונלי)</span>
+                <input id="adminFilesInput" name="files" type="file" multiple />
+              </label>
+
+              <div class="actions-row">
+                <button type="submit" class="primary-btn">שמור פעילות</button>
+              </div>
+            </form>
+            <p id="activityFormMsg" class="form-msg hidden"></p>
+          </section>
+
+          <section class="admin-section">
+            <h3>פעילויות שהוזנו</h3>
+            <div id="activitiesList" class="cards-list"></div>
+          </section>
+
+          <section class="admin-section">
+            <h3>טיוטות שאלות לאישור</h3>
+            <div id="draftsList" class="cards-list"></div>
+          </section>
+
+          <section class="admin-section">
+            <h3>שאלות שאושרו למאגר</h3>
+            <div id="customQuestionsList" class="cards-list"></div>
+          </section>
+        </div>
+
+        <section id="adminQuestionBankSection" class="admin-section hidden">
+          <div class="section-head">
+            <h3>מאגר השאלות - עריכה וניהול</h3>
+            <p id="questionCountExact" class="muted tight"></p>
+          </div>
+          <p class="muted">כאן ניתן לערוך, להסיר ולהחזיר שאלות באופן ממוקד.</p>
+          <div class="form-grid compact question-tools">
+            <label class="field full">
+              <span>חיפוש שאלה</span>
+              <input
+                id="questionSearchInput"
+                type="text"
+                placeholder="חפש לפי טקסט שאלה / קטגוריה / מקור"
+              />
+            </label>
+          </div>
+          <div class="actions-row compact">
+            <button id="runQuestionAuditBtn" class="secondary-btn" type="button">הרץ Audit לפני פרסום</button>
+            <button id="clearQuestionAuditBtn" class="ghost-btn" type="button">נקה דוח Audit</button>
+          </div>
+          <p id="questionAuditStatus" class="form-msg hidden"></p>
+          <div id="questionAuditResults" class="cards-list hidden"></div>
+          <div id="allQuestionsList" class="cards-list"></div>
+        </section>
+      </section>
+
+      <footer class="footer-note">
+        <p>מקורות הבסיס עודכנו לתוכן 2025 ומעלה (נכון ל־6 בפברואר 2026).</p>
+      </footer>
+    </main>
+
+    <div class="always-actions">
+      <button id="newGameAnytimeBtn" class="secondary-btn" type="button">משחק חדש בכל שלב</button>
+      <button id="homeAnytimeBtn" class="ghost-btn" type="button">מסך הבית</button>
+    </div>
+
+    <audio id="bgMusic" loop preload="auto">
+      <source src="assets/audio/mqg-theme.mp3" type="audio/mpeg" />
+    </audio>
+
+    <div id="musicControls" class="music-controls">
+      <p class="music-title">מוזיקת רקע</p>
+      <div class="music-row">
+        <button id="musicDownBtn" class="ghost-btn mini-btn" type="button">-</button>
+        <button id="musicMuteBtn" class="secondary-btn mini-btn" type="button">השתק</button>
+        <button id="musicUpBtn" class="ghost-btn mini-btn" type="button">+</button>
+      </div>
+      <p id="musicLevelText" class="music-level">עוצמה: 12%</p>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("./sw.js").catch(() => {});
+        });
+      }
+    </script>
+  </body>
+</html>

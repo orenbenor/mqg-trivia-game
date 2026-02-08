@@ -1,0 +1,21 @@
+{
+  "name": "טריוויה - התנועה לאיכות השלטון",
+  "short_name": "טריוויה MQG",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3f6fb",
+  "theme_color": "#0A3A6E",
+  "description": "משחק טריוויה חינוכי בעברית עם שאלות, הסברים ומקורות.",
+  "icons": [
+    {
+      "src": "assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
