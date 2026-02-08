@@ -776,6 +776,10 @@ th {
   gap: 0.62rem;
 }
 
+.admin-check-list {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
 .info-card {
   border: 1px solid var(--line);
   border-radius: 13px;
@@ -809,6 +813,26 @@ th {
   border-radius: 999px;
   padding: 0.17rem 0.56rem;
   background: rgba(8, 39, 76, 0.08);
+  color: var(--navy-700);
+}
+
+.badge.system-ok {
+  background: rgba(15, 139, 81, 0.12);
+  color: #0d6b3f;
+}
+
+.badge.system-warn {
+  background: rgba(175, 116, 0, 0.15);
+  color: #8b5d00;
+}
+
+.badge.system-bad {
+  background: rgba(191, 17, 17, 0.14);
+  color: #8a1414;
+}
+
+.badge.system-info {
+  background: rgba(11, 66, 122, 0.1);
   color: var(--navy-700);
 }
 

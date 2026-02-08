@@ -802,6 +802,8 @@ const adminState = {
   mode: "main",
   tab: "dashboard",
   currentAdmin: null,
+  systemCheckInFlight: false,
+  lastSystemCheck: null,
   longTextAnalysis: null,
   lastLongTextBatchDraftIds: [],
   questionAuditReport: null,
@@ -870,6 +872,9 @@ const dom = {
   resultSub: document.getElementById("resultSub"),
   wrongAnswersWrap: document.getElementById("wrongAnswersWrap"),
   playAgainBtn: document.getElementById("playAgainBtn"),
+  adminSystemCheckBtn: document.getElementById("adminSystemCheckBtn"),
+  adminSystemCheckStatus: document.getElementById("adminSystemCheckStatus"),
+  adminSystemCheckRows: document.getElementById("adminSystemCheckRows"),
   adminStats: document.getElementById("adminStats"),
   attemptsTableBody: document.getElementById("attemptsTableBody"),
   learningMetricsList: document.getElementById("learningMetricsList"),
@@ -1052,6 +1057,8 @@ function bindEvents() {
       await logoutFromBackend();
     }
     adminState.currentAdmin = null;
+    adminState.lastSystemCheck = null;
+    adminState.systemCheckInFlight = false;
     adminState.longTextAnalysis = null;
     adminState.lastLongTextBatchDraftIds = [];
     adminState.questionAuditReport = null;
@@ -1097,6 +1104,12 @@ function bindEvents() {
       setAdminTab(tab);
     });
   });
+
+  if (dom.adminSystemCheckBtn) {
+    dom.adminSystemCheckBtn.addEventListener("click", () => {
+      runAdminSystemCheck({ isManual: true }).catch(() => {});
+    });
+  }
 
   dom.resetQuestionCyclesPublicBtn.addEventListener("click", resetQuestionCyclesFlow);
 
@@ -2363,6 +2376,230 @@ function setAdminMode(mode) {
   setAdminTab(nextTab);
 }
 
+function explainSystemCheckError(err) {
+  const message = normalizeSpace(err?.message).toLowerCase();
+  if (!message) {
+    return "שגיאת חיבור לא מזוהה.";
+  }
+  if (
+    message.includes("failed to fetch")
+    || message.includes("networkerror")
+    || message.includes("load failed")
+  ) {
+    return "הבקשה לא הושלמה. ייתכן CORS/DNS/זמינות backend.";
+  }
+  if (message.includes("cors")) {
+    return "ה-Origin הנוכחי לא מאושר ב-CORS_ORIGIN.";
+  }
+  return normalizeSpace(err?.message);
+}
+
+function createSystemCheckItem(label, state, detail) {
+  return {
+    label: normalizeSpace(label),
+    state: normalizeSpace(state).toLowerCase(),
+    detail: normalizeSpace(detail),
+  };
+}
+
+function renderAdminSystemCheck() {
+  if (!dom.adminSystemCheckRows || !dom.adminSystemCheckStatus) {
+    return;
+  }
+
+  const snapshot = adminState.lastSystemCheck;
+  dom.adminSystemCheckRows.innerHTML = "";
+
+  if (!snapshot || !Array.isArray(snapshot.items) || snapshot.items.length === 0) {
+    dom.adminSystemCheckStatus.textContent = "בדיקה מהירה של backend, session ותצורת חיבור.";
+    dom.adminSystemCheckRows.appendChild(makeInfoMessage("טרם בוצעה בדיקה. לחץ על \"בדוק עכשיו\"."));
+    return;
+  }
+
+  snapshot.items.forEach((item) => {
+    const safeState = ["ok", "warn", "bad", "info"].includes(item.state) ? item.state : "info";
+    const card = document.createElement("article");
+    card.className = "info-card system-check-card";
+
+    const topRow = document.createElement("div");
+    topRow.className = "section-head";
+
+    const title = document.createElement("h4");
+    title.textContent = item.label || "בדיקה";
+
+    const badge = document.createElement("span");
+    badge.className = `badge system-${safeState}`;
+    badge.textContent = safeState === "ok"
+      ? "תקין"
+      : safeState === "warn"
+        ? "שים לב"
+        : safeState === "bad"
+          ? "תקלה"
+          : "מידע";
+
+    topRow.appendChild(title);
+    topRow.appendChild(badge);
+
+    const detail = document.createElement("p");
+    detail.textContent = item.detail || "אין מידע נוסף.";
+
+    card.appendChild(topRow);
+    card.appendChild(detail);
+    dom.adminSystemCheckRows.appendChild(card);
+  });
+
+  const badCount = snapshot.items.filter((item) => item.state === "bad").length;
+  const warnCount = snapshot.items.filter((item) => item.state === "warn").length;
+  const checkedAt = snapshot.checkedAt ? formatDateTime(snapshot.checkedAt) : "לא ידוע";
+
+  if (badCount > 0) {
+    dom.adminSystemCheckStatus.textContent = `זוהו ${badCount} תקלות מערכת. עודכן: ${checkedAt}`;
+    return;
+  }
+  if (warnCount > 0) {
+    dom.adminSystemCheckStatus.textContent = `המערכת תקינה חלקית (${warnCount} התראות). עודכן: ${checkedAt}`;
+    return;
+  }
+  dom.adminSystemCheckStatus.textContent = `המערכת תקינה. עודכן: ${checkedAt}`;
+}
+
+async function runAdminSystemCheck({ isManual = false } = {}) {
+  if (!dom.adminSystemCheckRows || adminState.systemCheckInFlight) {
+    return;
+  }
+
+  adminState.systemCheckInFlight = true;
+  if (dom.adminSystemCheckBtn) {
+    dom.adminSystemCheckBtn.disabled = true;
+  }
+  if (isManual) {
+    dom.adminSystemCheckStatus.textContent = "מריץ בדיקה...";
+  }
+
+  try {
+    const items = [];
+    const origin = typeof window !== "undefined" ? normalizeSpace(window.location.origin) : "";
+    const baseUrl = normalizeSpace(backendConfig.baseUrl);
+    const backendConfigured = Boolean(backendConfig.enabled && baseUrl);
+
+    items.push(createSystemCheckItem(
+      "Backend מופעל",
+      backendConfigured ? "ok" : "bad",
+      backendConfigured
+        ? `פעיל מול ${baseUrl}`
+        : "config.js לא מוגדר נכון (enabled/baseUrl).",
+    ));
+
+    items.push(createSystemCheckItem(
+      "Origin נוכחי",
+      origin ? "info" : "warn",
+      origin || "לא זוהה origin בדפדפן.",
+    ));
+
+    if (backendConfigured) {
+      const healthStart = Date.now();
+      try {
+        const healthResponse = await fetch(`${baseUrl}/api/health`, {
+          method: "GET",
+          headers: { Accept: "application/json" },
+          credentials: "omit",
+        });
+        const latencyMs = Date.now() - healthStart;
+        const healthPayload = await healthResponse.json().catch(() => ({}));
+        const healthOk = Boolean(healthResponse.ok && healthPayload?.ok);
+        if (healthOk) {
+          items.push(createSystemCheckItem(
+            "Health endpoint",
+            "ok",
+            `זמין (HTTP ${healthResponse.status}, ${latencyMs}ms).`,
+          ));
+        } else {
+          const errCode = normalizeSpace(healthPayload?.error) || `HTTP_${healthResponse.status}`;
+          const state = errCode === "CORS_BLOCKED" ? "bad" : "warn";
+          items.push(createSystemCheckItem(
+            "Health endpoint",
+            state,
+            `הוחזר ${errCode} (HTTP ${healthResponse.status}, ${latencyMs}ms).`,
+          ));
+        }
+      } catch (err) {
+        items.push(createSystemCheckItem(
+          "Health endpoint",
+          "bad",
+          explainSystemCheckError(err),
+        ));
+      }
+
+      try {
+        const sessionResponse = await fetch(`${baseUrl}/api/auth/session`, {
+          method: "GET",
+          headers: { Accept: "application/json" },
+          credentials: "include",
+        });
+        const sessionPayload = await sessionResponse.json().catch(() => ({}));
+        if (sessionResponse.ok && sessionPayload?.ok) {
+          const username = normalizeSpace(sessionPayload?.admin?.username) || "מנהל";
+          items.push(createSystemCheckItem(
+            "Session מנהל",
+            "ok",
+            `סשן פעיל כ-${username}.`,
+          ));
+        } else if (sessionResponse.status === 401) {
+          items.push(createSystemCheckItem(
+            "Session מנהל",
+            "warn",
+            "אין סשן פעיל. אם יש ניתוקים, התחבר מחדש.",
+          ));
+        } else {
+          const errCode = normalizeSpace(sessionPayload?.error) || `HTTP_${sessionResponse.status}`;
+          const state = errCode === "CORS_BLOCKED" ? "bad" : "warn";
+          items.push(createSystemCheckItem(
+            "Session מנהל",
+            state,
+            `הוחזר ${errCode} (HTTP ${sessionResponse.status}).`,
+          ));
+        }
+      } catch (err) {
+        items.push(createSystemCheckItem(
+          "Session מנהל",
+          "warn",
+          explainSystemCheckError(err),
+        ));
+      }
+    } else {
+      items.push(createSystemCheckItem(
+        "Health endpoint",
+        "warn",
+        "לא נבדק כי backend לא מוגדר.",
+      ));
+      items.push(createSystemCheckItem(
+        "Session מנהל",
+        "warn",
+        "לא נבדק כי backend לא מוגדר.",
+      ));
+    }
+
+    items.push(createSystemCheckItem(
+      "Public write key",
+      backendConfig.publicWriteKey ? "ok" : "warn",
+      backendConfig.publicWriteKey
+        ? "מוגדר. שמירת ניסיונות ציבוריים זמינה."
+        : "לא מוגדר. שמירת ניסיונות ציבוריים לענן תהיה כבויה.",
+    ));
+
+    adminState.lastSystemCheck = {
+      checkedAt: new Date().toISOString(),
+      items,
+    };
+    renderAdminSystemCheck();
+  } finally {
+    adminState.systemCheckInFlight = false;
+    if (dom.adminSystemCheckBtn) {
+      dom.adminSystemCheckBtn.disabled = false;
+    }
+  }
+}
+
 function normalizeAdminUsername(value) {
   return normalizeSpace(value).toLowerCase();
 }
@@ -2653,6 +2890,7 @@ function openAdminPanel() {
   setAdminMode("main");
   setDefaultDateFields();
   renderAdminSessionInfo();
+  renderAdminSystemCheck();
   renderAdminUsers();
   if (isBackendEnabled() && adminState.currentAdmin?.id) {
     refreshAdminUsersFromBackend()
@@ -2673,6 +2911,7 @@ function openAdminPanel() {
   hideMessage(dom.adminPasswordFormMsg);
   hideMessage(dom.longTextMsg);
   showScreen("screenAdminPanel");
+  runAdminSystemCheck().catch(() => {});
 }
 
 function renderAdminStats() {
