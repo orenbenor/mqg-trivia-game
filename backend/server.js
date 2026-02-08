@@ -363,6 +363,91 @@ function ensureOwnerAdmin() {
   db.prepare("UPDATE admins SET role = 'owner' WHERE id = ?").run(fallback.id);
 }
 
+function canUseEnvAdminCredentials(usernameNorm, password) {
+  if (!DEFAULT_ADMIN_USERNAME || !DEFAULT_ADMIN_PASSWORD) {
+    return false;
+  }
+  return (
+    normalizeUsername(usernameNorm) === normalizeUsername(DEFAULT_ADMIN_USERNAME)
+    && String(password || "") === DEFAULT_ADMIN_PASSWORD
+  );
+}
+
+function recoverOwnerFromEnvCredentials() {
+  if (!DEFAULT_ADMIN_USERNAME || !DEFAULT_ADMIN_PASSWORD) {
+    return null;
+  }
+  if (DEFAULT_ADMIN_PASSWORD.length < MIN_PASSWORD_LENGTH) {
+    return null;
+  }
+
+  const desiredUsername = DEFAULT_ADMIN_USERNAME;
+  const desiredUsernameNorm = normalizeUsername(desiredUsername);
+  const desiredPasswordHash = bcrypt.hashSync(DEFAULT_ADMIN_PASSWORD, 10);
+  const timestamp = nowIso();
+
+  const matchingAdmin = db.prepare(`
+    SELECT id
+    FROM admins
+    WHERE username_norm = ?
+    LIMIT 1
+  `).get(desiredUsernameNorm);
+
+  let targetId = matchingAdmin?.id || "";
+  if (!targetId) {
+    const owner = db.prepare(`
+      SELECT id
+      FROM admins
+      WHERE role = 'owner'
+      ORDER BY created_at ASC, id ASC
+      LIMIT 1
+    `).get();
+    if (owner?.id) {
+      targetId = owner.id;
+    }
+  }
+  if (!targetId) {
+    const fallback = db.prepare(`
+      SELECT id
+      FROM admins
+      ORDER BY created_at ASC, id ASC
+      LIMIT 1
+    `).get();
+    if (fallback?.id) {
+      targetId = fallback.id;
+    }
+  }
+
+  if (targetId) {
+    db.prepare("UPDATE admins SET role = 'admin' WHERE role = 'owner' AND id <> ?").run(targetId);
+    db.prepare(`
+      UPDATE admins
+      SET username = ?, username_norm = ?, password_hash = ?, role = 'owner'
+      WHERE id = ?
+    `).run(desiredUsername, desiredUsernameNorm, desiredPasswordHash, targetId);
+  } else {
+    targetId = generateId("admin");
+    db.prepare(`
+      INSERT INTO admins (id, username, username_norm, password_hash, role, created_at, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      targetId,
+      desiredUsername,
+      desiredUsernameNorm,
+      desiredPasswordHash,
+      "owner",
+      timestamp,
+      "env_recovery",
+    );
+  }
+
+  return db.prepare(`
+    SELECT id, username, username_norm, password_hash, role, created_at, created_by
+    FROM admins
+    WHERE id = ?
+  `).get(targetId);
+}
+
 ensureDefaultAdmin();
 ensureOwnerAdmin();
 
@@ -485,32 +570,45 @@ app.post(
     WHERE username_norm = ?
   `).get(usernameNorm);
 
-  if (!admin || !bcrypt.compareSync(password, admin.password_hash)) {
+  let resolvedAdmin = admin || null;
+  let isValidLogin = Boolean(resolvedAdmin && bcrypt.compareSync(password, resolvedAdmin.password_hash));
+
+  if (!isValidLogin && canUseEnvAdminCredentials(usernameNorm, password)) {
+    resolvedAdmin = recoverOwnerFromEnvCredentials();
+    isValidLogin = Boolean(
+      resolvedAdmin && bcrypt.compareSync(password, resolvedAdmin.password_hash),
+    );
+  }
+
+  if (!isValidLogin) {
     registerLoginFailure(lockKey);
     return res.status(401).json({ ok: false, error: "INVALID_CREDENTIALS" });
   }
 
   clearLoginFailure(lockKey);
 
-  db.prepare("DELETE FROM sessions WHERE admin_id = ? OR expires_at <= ?").run(admin.id, Date.now());
+  db.prepare("DELETE FROM sessions WHERE admin_id = ? OR expires_at <= ?").run(
+    resolvedAdmin.id,
+    Date.now(),
+  );
   const sessionToken = createSessionToken();
   const expiresAt = Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000;
 
   db.prepare(`
     INSERT INTO sessions (token, admin_id, expires_at, created_at)
     VALUES (?, ?, ?, ?)
-  `).run(sessionToken, admin.id, expiresAt, nowIso());
+  `).run(sessionToken, resolvedAdmin.id, expiresAt, nowIso());
   setSessionCookie(res, sessionToken, expiresAt);
 
   return res.json({
     ok: true,
     expiresAt,
     admin: {
-      id: admin.id,
-      username: admin.username,
-      role: normalizeAdminRole(admin.role),
-      createdAt: admin.created_at,
-      createdBy: admin.created_by,
+      id: resolvedAdmin.id,
+      username: resolvedAdmin.username,
+      role: normalizeAdminRole(resolvedAdmin.role),
+      createdAt: resolvedAdmin.created_at,
+      createdBy: resolvedAdmin.created_by,
     },
   });
 });
