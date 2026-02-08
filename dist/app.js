@@ -1023,10 +1023,20 @@ function bindEvents() {
       openAdminPanel();
       ensureMusicPlayback();
     } catch (_err) {
+      const backendErrorCode = normalizeSpace(_err?.message).toUpperCase();
+      const backendLoginErrorMessages = {
+        INVALID_CREDENTIALS: "שם משתמש או סיסמה שגויים.",
+        LOGIN_LOCKED: "יותר מדי ניסיונות התחברות. נסה שוב בעוד כמה דקות.",
+        RATE_LIMITED: "יותר מדי בקשות בזמן קצר. נסה שוב בעוד דקה.",
+        CORS_BLOCKED: "הדומיין הנוכחי לא מורשה מול ה-backend. עדכן CORS_ORIGIN ב-Render.",
+        BACKEND_NOT_CONFIGURED: "ה-Backend לא מוגדר נכון. בדוק את baseUrl בקובץ config.js.",
+      };
+      const loginErrorMessage = backendLoginErrorMessages[backendErrorCode]
+        || "התחברות למערכת הענן נכשלה. בדוק חיבור או פרטי התחברות.";
       showMessage(
         dom.adminLoginError,
         isBackendEnabled()
-          ? "התחברות למערכת הענן נכשלה. בדוק חיבור או פרטי התחברות."
+          ? loginErrorMessage
           : "שם משתמש או סיסמה שגויים. נסה שוב.",
         false,
       );

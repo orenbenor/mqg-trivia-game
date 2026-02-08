@@ -6,14 +6,28 @@ const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 
+function cleanEnvText(value) {
+  let output = String(value || "").trim();
+  const hasWrappedSingleQuote = output.length >= 2 && output.startsWith("'") && output.endsWith("'");
+  const hasWrappedDoubleQuote = output.length >= 2 && output.startsWith("\"") && output.endsWith("\"");
+  if (hasWrappedSingleQuote || hasWrappedDoubleQuote) {
+    output = output.slice(1, -1).trim();
+  }
+  return output;
+}
+
+function normalizeOrigin(value) {
+  return cleanEnvText(value).replace(/\/+$/, "");
+}
+
 const PORT = Number(process.env.PORT || 8787);
 const DB_PATH = process.env.DB_PATH
   ? path.resolve(process.cwd(), process.env.DB_PATH)
   : path.resolve(__dirname, "data", "mqg.sqlite");
-const DEFAULT_ADMIN_USERNAME = String(process.env.DEFAULT_ADMIN_USERNAME || "").trim();
-const DEFAULT_ADMIN_PASSWORD = String(process.env.DEFAULT_ADMIN_PASSWORD || "").trim();
+const DEFAULT_ADMIN_USERNAME = cleanEnvText(process.env.DEFAULT_ADMIN_USERNAME || "");
+const DEFAULT_ADMIN_PASSWORD = cleanEnvText(process.env.DEFAULT_ADMIN_PASSWORD || "");
 const SESSION_DAYS = Math.max(1, Number(process.env.SESSION_DAYS || 7));
-const CORS_ORIGIN = String(process.env.CORS_ORIGIN || "").trim();
+const CORS_ORIGIN = cleanEnvText(process.env.CORS_ORIGIN || "");
 const PUBLIC_WRITE_KEY = String(process.env.PUBLIC_WRITE_KEY || "").trim();
 const NODE_ENV = String(process.env.NODE_ENV || "development").trim();
 const IS_PRODUCTION = NODE_ENV === "production";
@@ -46,7 +60,7 @@ db.pragma("journal_mode = WAL");
 
 const allowedOrigins = CORS_ORIGIN
   .split(",")
-  .map((item) => item.trim())
+  .map((item) => normalizeOrigin(item))
   .filter(Boolean);
 if (IS_PRODUCTION && (!allowedOrigins.length || allowedOrigins.includes("*"))) {
   throw new Error("In production you must set a strict CORS_ORIGIN (no wildcard).");
@@ -104,10 +118,11 @@ app.use(cors({
     if (!origin) {
       return cb(null, true);
     }
+    const normalizedRequestOrigin = normalizeOrigin(origin);
     if (!allowedOrigins.length && !IS_PRODUCTION) {
       return cb(null, true);
     }
-    if (allowedOrigins.includes(origin)) {
+    if (allowedOrigins.includes(normalizedRequestOrigin)) {
       return cb(null, true);
     }
     return cb(new Error("CORS_BLOCKED"));
