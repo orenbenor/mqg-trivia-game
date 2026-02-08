@@ -450,6 +450,7 @@ function recoverOwnerFromEnvCredentials() {
 
 ensureDefaultAdmin();
 ensureOwnerAdmin();
+recoverOwnerFromEnvCredentials();
 
 function upsertState(key, value, updatedBy) {
   db.prepare(`
