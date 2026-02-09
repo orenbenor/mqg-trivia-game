@@ -444,7 +444,38 @@
             </section>
 
             <section class="admin-section">
-              <h3>טיוטות שאלות לאישור</h3>
+              <div class="section-head">
+                <h3>תור פרסום שאלות (Draft -> Review -> Published)</h3>
+                <p id="draftQueueSummary" class="muted tight"></p>
+              </div>
+              <div class="form-grid draft-queue-tools">
+                <label class="field">
+                  <span>סטטוס</span>
+                  <select id="draftQueueStatusFilter">
+                    <option value="all" selected>הכול</option>
+                    <option value="draft">Draft</option>
+                    <option value="review">Review</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>חיפוש טיוטה</span>
+                  <input
+                    id="draftQueueSearchInput"
+                    type="text"
+                    placeholder="חפש לפי שאלה / קטגוריה / הסבר / מקור"
+                  />
+                </label>
+              </div>
+              <div class="actions-row">
+                <button id="selectVisibleDraftsBtn" type="button" class="ghost-btn">בחר הכל בתצוגה</button>
+                <button id="clearDraftSelectionBtn" type="button" class="ghost-btn">נקה בחירה</button>
+                <button id="moveDraftsToReviewBtn" type="button" class="secondary-btn">העבר ל-Review</button>
+                <button id="moveDraftsToDraftBtn" type="button" class="ghost-btn">החזר ל-Draft</button>
+                <button id="approveSelectedDraftsBtn" type="button" class="primary-btn">אשר נבחרות</button>
+                <button id="rejectSelectedDraftsBtn" type="button" class="ghost-btn">דחה נבחרות</button>
+                <button id="undoDraftActionBtn" type="button" class="ghost-btn">בטל פעולה אחרונה</button>
+              </div>
+              <p id="draftQueueMsg" class="form-msg hidden"></p>
               <div id="draftsList" class="cards-list"></div>
             </section>
 
@@ -467,7 +498,7 @@
                 <p id="questionCountExact" class="muted tight"></p>
               </div>
               <p class="muted">כאן ניתן לערוך, להסיר ולהחזיר שאלות באופן ממוקד.</p>
-              <div class="form-grid compact question-tools">
+              <div class="form-grid question-tools">
                 <label class="field full">
                   <span>חיפוש שאלה</span>
                   <input
@@ -476,8 +507,65 @@
                     placeholder="חפש לפי טקסט שאלה / קטגוריה / מקור"
                   />
                 </label>
+                <label class="field">
+                  <span>קטגוריה</span>
+                  <select id="questionCategoryFilter">
+                    <option value="all" selected>כל הקטגוריות</option>
+                    <option value="מערכת המשפט ומינויים">מערכת המשפט ומינויים</option>
+                    <option value="שוויון בנטל">שוויון בנטל</option>
+                    <option value="תקשורת ושקיפות">תקשורת ושקיפות</option>
+                    <option value="כלכלה ותחרות">כלכלה ותחרות</option>
+                    <option value="חברות ממשלתיות">חברות ממשלתיות</option>
+                    <option value="חושפי שחיתות">חושפי שחיתות</option>
+                    <option value="פעילות ציבורית">פעילות ציבורית</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>סוג שאלה</span>
+                  <select id="questionKindFilter">
+                    <option value="all" selected>הכול</option>
+                    <option value="activity">פעילות</option>
+                    <option value="success">הישג</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>סטטוס</span>
+                  <select id="questionVisibilityFilter">
+                    <option value="all" selected>הכול</option>
+                    <option value="active">פעילה</option>
+                    <option value="hidden">מוסתרת</option>
+                    <option value="custom">מותאמת (Published)</option>
+                    <option value="base">בסיס</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>מקור</span>
+                  <select id="questionSourceFilter">
+                    <option value="all" selected>הכול</option>
+                    <option value="with-source">עם מקור</option>
+                    <option value="no-source">ללא מקור</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>מתאריך</span>
+                  <input id="questionDateFrom" type="date" />
+                </label>
+                <label class="field">
+                  <span>עד תאריך</span>
+                  <input id="questionDateTo" type="date" />
+                </label>
+                <label class="field">
+                  <span>מיון</span>
+                  <select id="questionSortMode">
+                    <option value="default" selected>ברירת מחדל</option>
+                    <option value="newest">הכי חדשות</option>
+                    <option value="hardest">הכי מכשילות</option>
+                    <option value="quality-risk">סיכון איכות גבוה</option>
+                  </select>
+                </label>
               </div>
               <div class="actions-row compact">
+                <button id="resetQuestionFiltersBtn" class="ghost-btn" type="button">נקה פילטרים</button>
                 <button id="runQuestionAuditBtn" class="secondary-btn" type="button">הרץ Audit לפני פרסום</button>
                 <button id="clearQuestionAuditBtn" class="ghost-btn" type="button">נקה דוח Audit</button>
               </div>
@@ -498,6 +586,7 @@
                 <h3>מעקב תוצאות שחקנים</h3>
                 <button id="clearAttemptsBtn" class="ghost-btn">ניקוי נתונים</button>
               </div>
+              <p id="learningInsightsSummary" class="muted tight"></p>
               <div class="table-wrap">
                 <table>
                   <thead>
@@ -520,6 +609,22 @@
                 <p class="muted tight">איפה שחקנים נופלים ולמה כדאי לחזק.</p>
               </div>
               <div id="learningMetricsList" class="cards-list"></div>
+            </section>
+
+            <section class="admin-section">
+              <div class="section-head">
+                <h3>שאלות מכשילות ביותר</h3>
+                <p class="muted tight">זיהוי שאלות עם אחוז נפילה גבוה ופקיעות זמן.</p>
+              </div>
+              <div id="questionDifficultyList" class="cards-list"></div>
+            </section>
+
+            <section class="admin-section">
+              <div class="section-head">
+                <h3>המלצות פעולה אוטומטיות</h3>
+                <p class="muted tight">צעדים ממוקדים לשיפור למידה ותוכן.</p>
+              </div>
+              <div id="learningRecommendationsList" class="cards-list"></div>
             </section>
           </section>
 

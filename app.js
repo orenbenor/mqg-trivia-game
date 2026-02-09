@@ -10,6 +10,8 @@ const QUALITY_MIN_QUESTION_LEN = 24;
 const QUALITY_MIN_EXPLANATION_LEN = 42;
 const LONG_TEXT_MIN_CHARS = 300;
 const LONG_TEXT_PREVIEW_FACTS = 6;
+const DRAFT_ACTION_LOG_LIMIT = 80;
+const DRAFT_REJECT_REASON_MAX_LEN = 200;
 const LONG_TEXT_QUESTION_STEMS = [
   "לפי הטקסט שהוזן, איזו מהטענות מופיעה בו במפורש?",
   "מה מהבאים תואם במדויק את הכתוב בטקסט?",
@@ -25,6 +27,7 @@ const STORAGE_KEYS = {
   customQuestions: "mqg_trivia_custom_questions_v3",
   disabledQuestionIds: "mqg_trivia_disabled_questions_v1",
   questionOverrides: "mqg_trivia_question_overrides_v1",
+  draftActionLog: "mqg_trivia_draft_action_log_v1",
   musicSettings: "mqg_music_settings_v1",
   questionCycleUsedIds: "mqg_question_cycle_used_ids_v1",
   familyCycleUsedIds: "mqg_family_cycle_used_ids_v1",
@@ -787,6 +790,7 @@ const gameState = {
   answerTimes: [],
   timeoutCount: 0,
   categoryStats: {},
+  questionStats: {},
   startAt: 0,
   questionStartedAt: 0,
   timerIntervalId: null,
@@ -804,6 +808,8 @@ const adminState = {
   currentAdmin: null,
   systemCheckInFlight: false,
   lastSystemCheck: null,
+  draftSelectionIds: [],
+  lastVisibleDraftIds: [],
   longTextAnalysis: null,
   lastLongTextBatchDraftIds: [],
   questionAuditReport: null,
@@ -889,6 +895,17 @@ const dom = {
   adminFilesInput: document.getElementById("adminFilesInput"),
   activityFormMsg: document.getElementById("activityFormMsg"),
   activitiesList: document.getElementById("activitiesList"),
+  draftQueueSummary: document.getElementById("draftQueueSummary"),
+  draftQueueStatusFilter: document.getElementById("draftQueueStatusFilter"),
+  draftQueueSearchInput: document.getElementById("draftQueueSearchInput"),
+  selectVisibleDraftsBtn: document.getElementById("selectVisibleDraftsBtn"),
+  clearDraftSelectionBtn: document.getElementById("clearDraftSelectionBtn"),
+  moveDraftsToReviewBtn: document.getElementById("moveDraftsToReviewBtn"),
+  moveDraftsToDraftBtn: document.getElementById("moveDraftsToDraftBtn"),
+  approveSelectedDraftsBtn: document.getElementById("approveSelectedDraftsBtn"),
+  rejectSelectedDraftsBtn: document.getElementById("rejectSelectedDraftsBtn"),
+  undoDraftActionBtn: document.getElementById("undoDraftActionBtn"),
+  draftQueueMsg: document.getElementById("draftQueueMsg"),
   draftsList: document.getElementById("draftsList"),
   customQuestionsList: document.getElementById("customQuestionsList"),
   longTextInput: document.getElementById("longTextInput"),
@@ -906,11 +923,22 @@ const dom = {
   longTextDraftsPreview: document.getElementById("longTextDraftsPreview"),
   questionCountExact: document.getElementById("questionCountExact"),
   questionSearchInput: document.getElementById("questionSearchInput"),
+  questionCategoryFilter: document.getElementById("questionCategoryFilter"),
+  questionKindFilter: document.getElementById("questionKindFilter"),
+  questionVisibilityFilter: document.getElementById("questionVisibilityFilter"),
+  questionSourceFilter: document.getElementById("questionSourceFilter"),
+  questionDateFrom: document.getElementById("questionDateFrom"),
+  questionDateTo: document.getElementById("questionDateTo"),
+  questionSortMode: document.getElementById("questionSortMode"),
+  resetQuestionFiltersBtn: document.getElementById("resetQuestionFiltersBtn"),
   runQuestionAuditBtn: document.getElementById("runQuestionAuditBtn"),
   clearQuestionAuditBtn: document.getElementById("clearQuestionAuditBtn"),
   questionAuditStatus: document.getElementById("questionAuditStatus"),
   questionAuditResults: document.getElementById("questionAuditResults"),
   allQuestionsList: document.getElementById("allQuestionsList"),
+  learningInsightsSummary: document.getElementById("learningInsightsSummary"),
+  questionDifficultyList: document.getElementById("questionDifficultyList"),
+  learningRecommendationsList: document.getElementById("learningRecommendationsList"),
   adminTabButtons: Array.from(document.querySelectorAll("[data-admin-tab-target]")),
   adminTabPanels: Array.from(document.querySelectorAll("[data-admin-tab-panel]")),
 };
@@ -1059,6 +1087,8 @@ function bindEvents() {
     adminState.currentAdmin = null;
     adminState.lastSystemCheck = null;
     adminState.systemCheckInFlight = false;
+    adminState.draftSelectionIds = [];
+    adminState.lastVisibleDraftIds = [];
     adminState.longTextAnalysis = null;
     adminState.lastLongTextBatchDraftIds = [];
     adminState.questionAuditReport = null;
@@ -1072,6 +1102,7 @@ function bindEvents() {
     hideMessage(dom.adminUserFormMsg);
     hideMessage(dom.adminPasswordFormMsg);
     hideMessage(dom.longTextMsg);
+    hideDraftQueueMessage();
     setAdminMode("main");
     stopQuestionTimer();
     showScreen("screenLanding");
@@ -1177,6 +1208,38 @@ function bindEvents() {
   dom.questionSearchInput.addEventListener("input", () => {
     renderAllQuestionsManager();
   });
+  dom.draftQueueStatusFilter?.addEventListener("change", () => {
+    renderDrafts();
+  });
+  dom.draftQueueSearchInput?.addEventListener("input", () => {
+    renderDrafts();
+  });
+  dom.selectVisibleDraftsBtn?.addEventListener("click", selectVisibleDrafts);
+  dom.clearDraftSelectionBtn?.addEventListener("click", clearDraftSelection);
+  dom.moveDraftsToReviewBtn?.addEventListener("click", () => {
+    moveSelectedDraftsToStatus("review");
+  });
+  dom.moveDraftsToDraftBtn?.addEventListener("click", () => {
+    moveSelectedDraftsToStatus("draft");
+  });
+  dom.approveSelectedDraftsBtn?.addEventListener("click", approveSelectedDrafts);
+  dom.rejectSelectedDraftsBtn?.addEventListener("click", rejectSelectedDrafts);
+  dom.undoDraftActionBtn?.addEventListener("click", undoLastDraftAction);
+
+  [
+    dom.questionCategoryFilter,
+    dom.questionKindFilter,
+    dom.questionVisibilityFilter,
+    dom.questionSourceFilter,
+    dom.questionDateFrom,
+    dom.questionDateTo,
+    dom.questionSortMode,
+  ].forEach((node) => {
+    node?.addEventListener("change", () => {
+      renderAllQuestionsManager();
+    });
+  });
+  dom.resetQuestionFiltersBtn?.addEventListener("click", resetQuestionFilters);
   dom.runQuestionAuditBtn.addEventListener("click", runQuestionBankAudit);
   dom.clearQuestionAuditBtn.addEventListener("click", clearQuestionBankAuditReport);
 
@@ -1330,6 +1393,7 @@ function resetAndGoToNewGame() {
   gameState.answerTimes = [];
   gameState.timeoutCount = 0;
   gameState.categoryStats = {};
+  gameState.questionStats = {};
   gameState.wrong = [];
   gameState.feedbackDeepOpen = false;
   gameState.questionStartedAt = 0;
@@ -1378,6 +1442,7 @@ function startQuickGame() {
   gameState.answerTimes = [];
   gameState.timeoutCount = 0;
   gameState.categoryStats = {};
+  gameState.questionStats = {};
   gameState.startAt = Date.now();
   gameState.questionStartedAt = 0;
   gameState.remainingSeconds = QUESTION_TIMEOUT_SECONDS;
@@ -1589,6 +1654,7 @@ function answerQuestion(selectedIndex, options = {}) {
   }
   const isCorrect = !timedOut && selectedIndex === question.answer;
   updateCategoryPerformance(question, isCorrect, timedOut, elapsedSeconds);
+  updateQuestionPerformance(question, isCorrect, timedOut, elapsedSeconds);
   const optionButtons = Array.from(dom.optionsWrap.querySelectorAll(".option-btn"));
 
   optionButtons.forEach((button, index) => {
@@ -1645,6 +1711,38 @@ function updateCategoryPerformance(question, isCorrect, timedOut, elapsedSeconds
   stat.totalAnswerSec += Number(elapsedSeconds || 0);
   if (isCorrect) {
     stat.correct += 1;
+  }
+  if (timedOut) {
+    stat.timeouts += 1;
+  }
+}
+
+function updateQuestionPerformance(question, isCorrect, timedOut, elapsedSeconds) {
+  const questionId = normalizeSpace(question?.id);
+  if (!questionId) {
+    return;
+  }
+
+  if (!gameState.questionStats[questionId]) {
+    gameState.questionStats[questionId] = {
+      questionId,
+      questionText: normalizeSpace(question?.question),
+      category: normalizeSpace(question?.category) || "ללא קטגוריה",
+      total: 0,
+      correct: 0,
+      wrong: 0,
+      timeouts: 0,
+      totalAnswerSec: 0,
+    };
+  }
+
+  const stat = gameState.questionStats[questionId];
+  stat.total += 1;
+  stat.totalAnswerSec += Number(elapsedSeconds || 0);
+  if (isCorrect) {
+    stat.correct += 1;
+  } else {
+    stat.wrong += 1;
   }
   if (timedOut) {
     stat.timeouts += 1;
@@ -1871,6 +1969,7 @@ function finishGame() {
     avgAnswerSec,
     timeoutCount: gameState.timeoutCount,
     categoryStats: gameState.categoryStats,
+    questionStats: gameState.questionStats,
     playedAt: new Date().toISOString(),
   });
 
@@ -2889,6 +2988,8 @@ async function removeAdminUser(userId) {
 function openAdminPanel() {
   setAdminMode("main");
   setDefaultDateFields();
+  adminState.draftSelectionIds = [];
+  adminState.lastVisibleDraftIds = [];
   renderAdminSessionInfo();
   renderAdminSystemCheck();
   renderAdminUsers();
@@ -2910,6 +3011,7 @@ function openAdminPanel() {
   hideMessage(dom.adminUserFormMsg);
   hideMessage(dom.adminPasswordFormMsg);
   hideMessage(dom.longTextMsg);
+  hideDraftQueueMessage();
   showScreen("screenAdminPanel");
   runAdminSystemCheck().catch(() => {});
 }
@@ -2917,7 +3019,7 @@ function openAdminPanel() {
 function renderAdminStats() {
   const attempts = readStorage(STORAGE_KEYS.attempts, []);
   const activities = readStorage(STORAGE_KEYS.activities, []);
-  const drafts = readStorage(STORAGE_KEYS.drafts, []);
+  const drafts = readDraftQueue();
   const inventory = getQuestionInventory();
   const totalQuestions = inventory.activeQuestions.length;
   const disabledQuestions = inventory.disabledIds.size;
@@ -3008,6 +3110,12 @@ function renderAttemptsTable() {
 function renderLearningMetrics() {
   const attempts = readStorage(STORAGE_KEYS.attempts, []);
   dom.learningMetricsList.innerHTML = "";
+  if (dom.questionDifficultyList) {
+    dom.questionDifficultyList.innerHTML = "";
+  }
+  if (dom.learningRecommendationsList) {
+    dom.learningRecommendationsList.innerHTML = "";
+  }
 
   const categorySummary = new Map();
   attempts.forEach((attempt) => {
@@ -3047,79 +3155,287 @@ function renderLearningMetrics() {
     });
   });
 
+  let categoryRows = [];
   if (!categorySummary.size) {
     dom.learningMetricsList.appendChild(
       makeInfoMessage("עדיין אין מספיק נתונים למדד למידה. אחרי כמה משחקים יופיעו נקודות נפילה לפי נושא."),
     );
-    return;
+  } else {
+    categoryRows = Array.from(categorySummary.entries())
+      .map(([category, item]) => {
+        const misses = Math.max(0, item.total - item.correct);
+        const accuracy = item.total ? Math.round((item.correct / item.total) * 100) : 0;
+        const timeoutRate = item.total ? Math.round((item.timeouts / item.total) * 100) : 0;
+        const avgSec = item.total ? Number((item.totalAnswerSec / item.total).toFixed(1)) : 0;
+        const learningIndex = Math.max(
+          0,
+          Math.min(100, Math.round(accuracy * 0.72 + (100 - timeoutRate) * 0.28)),
+        );
+
+        return {
+          category,
+          total: item.total,
+          misses,
+          accuracy,
+          timeoutRate,
+          avgSec,
+          learningIndex,
+        };
+      })
+      .sort((a, b) => {
+        if (a.accuracy !== b.accuracy) {
+          return a.accuracy - b.accuracy;
+        }
+        return b.total - a.total;
+      });
+
+    categoryRows.forEach((row) => {
+      const card = document.createElement("article");
+      card.className = "info-card learning-card";
+
+      const title = document.createElement("h4");
+      title.textContent = row.category;
+
+      const statLine = document.createElement("p");
+      statLine.textContent = `דיוק: ${row.accuracy}% | נפילות: ${row.misses}/${row.total} | פקיעות זמן: ${row.timeoutRate}%`;
+
+      const speedLine = document.createElement("p");
+      speedLine.textContent = `זמן מענה ממוצע: ${row.avgSec} שניות | מדד למידה: ${row.learningIndex}/100`;
+
+      const barWrap = document.createElement("div");
+      barWrap.className = "learning-bar";
+
+      const barFill = document.createElement("div");
+      barFill.className = "learning-fill";
+      barFill.style.width = `${row.learningIndex}%`;
+
+      barWrap.appendChild(barFill);
+
+      const priority = document.createElement("p");
+      priority.className = "muted tight";
+      if (row.accuracy < 55) {
+        priority.textContent = "עדיפות חיזוק: גבוהה מאוד - זה נושא ששחקנים מתקשים בו כרגע.";
+      } else if (row.accuracy < 72) {
+        priority.textContent = "עדיפות חיזוק: בינונית - כדאי להוסיף דוגמאות והסברים בנושא.";
+      } else {
+        priority.textContent = "עדיפות חיזוק: נמוכה - הנושא מובן יחסית.";
+      }
+
+      card.appendChild(title);
+      card.appendChild(statLine);
+      card.appendChild(speedLine);
+      card.appendChild(barWrap);
+      card.appendChild(priority);
+      dom.learningMetricsList.appendChild(card);
+    });
   }
 
-  const rows = Array.from(categorySummary.entries())
-    .map(([category, item]) => {
-      const misses = Math.max(0, item.total - item.correct);
-      const accuracy = item.total ? Math.round((item.correct / item.total) * 100) : 0;
-      const timeoutRate = item.total ? Math.round((item.timeouts / item.total) * 100) : 0;
-      const avgSec = item.total ? Number((item.totalAnswerSec / item.total).toFixed(1)) : 0;
-      const learningIndex = Math.max(
-        0,
-        Math.min(100, Math.round(accuracy * 0.72 + (100 - timeoutRate) * 0.28)),
-      );
+  const questionRows = buildQuestionLearningRows(attempts);
+  renderQuestionDifficultyList(questionRows);
+  renderLearningRecommendationsPanel(categoryRows, questionRows, attempts.length);
+
+  if (dom.learningInsightsSummary) {
+    const trackedQuestions = questionRows.filter((item) => item.total >= 2).length;
+    dom.learningInsightsSummary.textContent =
+      `משחקים נותחו: ${attempts.length} | שאלות עם מדגם מספיק: ${trackedQuestions} | קטגוריות פעילות: ${categoryRows.length}`;
+  }
+}
+
+function buildQuestionLearningRows(attemptsInput) {
+  const attempts = Array.isArray(attemptsInput) ? attemptsInput : readStorage(STORAGE_KEYS.attempts, []);
+  const summary = new Map();
+  const inventory = getQuestionInventory();
+  const inventoryById = new Map(inventory.allQuestions.map((question) => [normalizeSpace(question.id), question]));
+
+  attempts.forEach((attempt) => {
+    const rawQuestionStats = attempt?.questionStats;
+    if (!rawQuestionStats || typeof rawQuestionStats !== "object") {
+      return;
+    }
+
+    const entries = Array.isArray(rawQuestionStats)
+      ? rawQuestionStats
+      : Object.values(rawQuestionStats);
+
+    entries.forEach((item) => {
+      const safeId = normalizeSpace(item?.questionId || item?.id);
+      if (!safeId) {
+        return;
+      }
+
+      if (!summary.has(safeId)) {
+        const fallbackQuestion = inventoryById.get(safeId);
+        summary.set(safeId, {
+          id: safeId,
+          question: normalizeSpace(item?.questionText || fallbackQuestion?.question) || "שאלה ללא טקסט",
+          category: normalizeSpace(item?.category || fallbackQuestion?.category) || "ללא קטגוריה",
+          total: 0,
+          correct: 0,
+          wrong: 0,
+          timeouts: 0,
+          totalAnswerSec: 0,
+        });
+      }
+
+      const current = summary.get(safeId);
+      const total = Math.max(0, Number(item?.total || 0));
+      const correct = clampNumber(Number(item?.correct || 0), 0, total);
+      const wrong = clampNumber(Number(item?.wrong || Math.max(0, total - correct)), 0, total);
+      const timeouts = clampNumber(Number(item?.timeouts || 0), 0, total);
+      const totalAnswerSec = Math.max(0, Number(item?.totalAnswerSec || 0));
+
+      current.total += total;
+      current.correct += correct;
+      current.wrong += wrong;
+      current.timeouts += timeouts;
+      current.totalAnswerSec += totalAnswerSec;
+    });
+  });
+
+  return Array.from(summary.values())
+    .map((row) => {
+      const failRate = row.total ? Math.round((row.wrong / row.total) * 100) : 0;
+      const timeoutRate = row.total ? Math.round((row.timeouts / row.total) * 100) : 0;
+      const accuracy = row.total ? Math.round((row.correct / row.total) * 100) : 0;
+      const avgSec = row.total ? Number((row.totalAnswerSec / row.total).toFixed(1)) : 0;
+      const riskScore = Math.round(failRate * 0.7 + timeoutRate * 0.3);
 
       return {
-        category,
-        total: item.total,
-        misses,
-        accuracy,
+        ...row,
+        failRate,
         timeoutRate,
+        accuracy,
         avgSec,
-        learningIndex,
+        riskScore,
       };
     })
+    .filter((row) => row.total > 0)
     .sort((a, b) => {
-      if (a.accuracy !== b.accuracy) {
-        return a.accuracy - b.accuracy;
+      if (a.riskScore !== b.riskScore) {
+        return b.riskScore - a.riskScore;
       }
       return b.total - a.total;
     });
+}
 
-  rows.forEach((row) => {
+function renderQuestionDifficultyList(questionRows) {
+  if (!dom.questionDifficultyList) {
+    return;
+  }
+
+  dom.questionDifficultyList.innerHTML = "";
+  const actionable = (questionRows || []).filter((row) => row.total >= 2).slice(0, 10);
+  if (!actionable.length) {
+    dom.questionDifficultyList.appendChild(
+      makeInfoMessage("עדיין אין מספיק מדגם ברמת שאלה. אחרי כמה משחקים נוספים יופיעו שאלות מכשילות."),
+    );
+    return;
+  }
+
+  actionable.forEach((row) => {
     const card = document.createElement("article");
-    card.className = "info-card learning-card";
+    card.className = "info-card";
 
     const title = document.createElement("h4");
-    title.textContent = row.category;
+    title.textContent = row.question;
+
+    const badgeRow = document.createElement("div");
+    badgeRow.className = "badge-row";
+
+    const riskBadge = document.createElement("span");
+    riskBadge.className = `badge ${row.failRate >= 55 ? "audit-level bad" : "audit-level warn"}`;
+    riskBadge.textContent = `סיכון: ${row.riskScore}/100`;
+
+    const categoryBadge = document.createElement("span");
+    categoryBadge.className = "badge";
+    categoryBadge.textContent = row.category;
+
+    const sampleBadge = document.createElement("span");
+    sampleBadge.className = "badge";
+    sampleBadge.textContent = `מדגם: ${row.total}`;
+
+    badgeRow.appendChild(riskBadge);
+    badgeRow.appendChild(categoryBadge);
+    badgeRow.appendChild(sampleBadge);
 
     const statLine = document.createElement("p");
-    statLine.textContent = `דיוק: ${row.accuracy}% | נפילות: ${row.misses}/${row.total} | פקיעות זמן: ${row.timeoutRate}%`;
+    statLine.textContent =
+      `נפילות: ${row.failRate}% | פקיעות זמן: ${row.timeoutRate}% | דיוק: ${row.accuracy}% | זמן מענה ממוצע: ${row.avgSec} ש׳`;
 
-    const speedLine = document.createElement("p");
-    speedLine.textContent = `זמן מענה ממוצע: ${row.avgSec} שניות | מדד למידה: ${row.learningIndex}/100`;
+    const actions = document.createElement("div");
+    actions.className = "inline-actions";
 
-    const barWrap = document.createElement("div");
-    barWrap.className = "learning-bar";
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "ghost-btn";
+    editBtn.textContent = "ערוך במאגר";
+    editBtn.addEventListener("click", () => {
+      setAdminTab("questionBank");
+      editQuestion(row.id);
+    });
 
-    const barFill = document.createElement("div");
-    barFill.className = "learning-fill";
-    barFill.style.width = `${row.learningIndex}%`;
-
-    barWrap.appendChild(barFill);
-
-    const priority = document.createElement("p");
-    priority.className = "muted tight";
-    if (row.accuracy < 55) {
-      priority.textContent = "עדיפות חיזוק: גבוהה מאוד - זה נושא ששחקנים מתקשים בו כרגע.";
-    } else if (row.accuracy < 72) {
-      priority.textContent = "עדיפות חיזוק: בינונית - כדאי להוסיף דוגמאות והסברים בנושא.";
-    } else {
-      priority.textContent = "עדיפות חיזוק: נמוכה - הנושא מובן יחסית.";
-    }
+    actions.appendChild(editBtn);
 
     card.appendChild(title);
+    card.appendChild(badgeRow);
     card.appendChild(statLine);
-    card.appendChild(speedLine);
-    card.appendChild(barWrap);
-    card.appendChild(priority);
-    dom.learningMetricsList.appendChild(card);
+    card.appendChild(actions);
+    dom.questionDifficultyList.appendChild(card);
+  });
+}
+
+function renderLearningRecommendationsPanel(categoryRows, questionRows, attemptCount) {
+  if (!dom.learningRecommendationsList) {
+    return;
+  }
+  dom.learningRecommendationsList.innerHTML = "";
+
+  const recommendations = [];
+  if (attemptCount < 5) {
+    recommendations.push("הגדל מדגם: לפחות 5-8 משחקים נדרשים כדי לזהות דפוסי קושי יציבים.");
+  }
+
+  const weakCategories = (categoryRows || [])
+    .filter((row) => row.total >= 4 && row.accuracy < 65)
+    .slice(0, 3);
+  weakCategories.forEach((row) => {
+    recommendations.push(
+      `בקטגוריית "${row.category}" הדיוק ${row.accuracy}% בלבד. מומלץ להוסיף 3-5 שאלות הסבר קצרות ולחדד מסיחים.`,
+    );
+  });
+
+  const hardQuestions = (questionRows || [])
+    .filter((row) => row.total >= 3 && row.failRate >= 50)
+    .slice(0, 4);
+  hardQuestions.forEach((row) => {
+    recommendations.push(
+      `השאלה "${clampText(row.question, 90)}" מכשילה (${row.failRate}% נפילות). מומלץ לשפר ניסוח והסבר ולבדוק את המסיחים.`,
+    );
+  });
+
+  const timeoutQuestions = (questionRows || [])
+    .filter((row) => row.total >= 3 && row.timeoutRate >= 30)
+    .slice(0, 2);
+  timeoutQuestions.forEach((row) => {
+    recommendations.push(
+      `שיעור פקיעת הזמן גבוה בשאלה "${clampText(row.question, 80)}" (${row.timeoutRate}%). מומלץ לקצר נוסח שאלה/אפשרויות.`,
+    );
+  });
+
+  if (!recommendations.length) {
+    dom.learningRecommendationsList.appendChild(
+      makeInfoMessage("כרגע אין התראות חריגות. מומלץ להמשיך לנטר ולהריץ Audit תוכן לפני פרסום."),
+    );
+    return;
+  }
+
+  recommendations.slice(0, 8).forEach((text) => {
+    const card = document.createElement("article");
+    card.className = "info-card";
+    const line = document.createElement("p");
+    line.textContent = text;
+    card.appendChild(line);
+    dom.learningRecommendationsList.appendChild(card);
   });
 }
 
@@ -3182,11 +3498,15 @@ async function handleActivitySubmit(event) {
   const activities = readStorage(STORAGE_KEYS.activities, []);
   activities.unshift(activity);
 
-  const drafts = readStorage(STORAGE_KEYS.drafts, []);
+  const drafts = readDraftQueue();
   const generatedDrafts = generateDraftsFromActivity(activity);
 
   const savedActivities = writeStorage(STORAGE_KEYS.activities, activities.slice(0, 300));
-  const savedDrafts = writeStorage(STORAGE_KEYS.drafts, [...generatedDrafts, ...drafts].slice(0, 500));
+  const generatedDraftsWithWorkflow = generatedDrafts.map((draft) => ({
+    ...draft,
+    workflowStatus: "draft",
+  }));
+  const savedDrafts = writeDraftQueue([...generatedDraftsWithWorkflow, ...drafts].slice(0, 500));
   if (!savedActivities || !savedDrafts) {
     showMessage(
       dom.activityFormMsg,
@@ -3298,17 +3618,216 @@ function renderActivities() {
   });
 }
 
+function normalizeDraftWorkflowStatus(value) {
+  const safe = normalizeSpace(value).toLowerCase();
+  return safe === "review" ? "review" : "draft";
+}
+
+function sanitizeDraftRecord(draft) {
+  if (!draft || typeof draft !== "object") {
+    return null;
+  }
+  return {
+    ...draft,
+    workflowStatus: normalizeDraftWorkflowStatus(draft.workflowStatus || draft.status),
+    rejectedReason: normalizeSpace(draft.rejectedReason),
+    rejectedAt: normalizeSpace(draft.rejectedAt),
+  };
+}
+
+function readDraftQueue() {
+  return readStorage(STORAGE_KEYS.drafts, [])
+    .map(sanitizeDraftRecord)
+    .filter(Boolean);
+}
+
+function writeDraftQueue(drafts) {
+  const sanitized = (drafts || [])
+    .map(sanitizeDraftRecord)
+    .filter(Boolean);
+  return writeStorage(STORAGE_KEYS.drafts, sanitized.slice(0, 500));
+}
+
+function readDraftActionLog() {
+  return readStorage(STORAGE_KEYS.draftActionLog, []);
+}
+
+function writeDraftActionLog(entries) {
+  const safe = Array.isArray(entries) ? entries.slice(0, DRAFT_ACTION_LOG_LIMIT) : [];
+  return writeStorage(STORAGE_KEYS.draftActionLog, safe);
+}
+
+function pushDraftActionLogEntry(entry) {
+  const current = readDraftActionLog();
+  const next = [entry, ...current].slice(0, DRAFT_ACTION_LOG_LIMIT);
+  return writeDraftActionLog(next);
+}
+
+function popDraftActionLogEntry() {
+  const current = readDraftActionLog();
+  if (!current.length) {
+    return null;
+  }
+  const [top, ...rest] = current;
+  const saved = writeDraftActionLog(rest);
+  return saved ? top : null;
+}
+
+function syncDraftSelection(allowedIds) {
+  const allowed = new Set((allowedIds || []).map((id) => normalizeSpace(id)).filter(Boolean));
+  adminState.draftSelectionIds = adminState.draftSelectionIds
+    .map((id) => normalizeSpace(id))
+    .filter((id) => allowed.has(id));
+}
+
+function clearDraftSelection() {
+  adminState.draftSelectionIds = [];
+  renderDrafts();
+}
+
+function selectVisibleDrafts() {
+  adminState.draftSelectionIds = adminState.lastVisibleDraftIds.slice();
+  renderDrafts();
+}
+
+function toggleDraftSelection(draftId, shouldSelect) {
+  const safeId = normalizeSpace(draftId);
+  if (!safeId) {
+    return;
+  }
+  const set = new Set(adminState.draftSelectionIds);
+  if (shouldSelect) {
+    set.add(safeId);
+  } else {
+    set.delete(safeId);
+  }
+  adminState.draftSelectionIds = Array.from(set);
+}
+
+function setDraftQueueMessage(text, isOk) {
+  if (!dom.draftQueueMsg) {
+    return;
+  }
+  showMessage(dom.draftQueueMsg, text, isOk);
+}
+
+function hideDraftQueueMessage() {
+  if (!dom.draftQueueMsg) {
+    return;
+  }
+  hideMessage(dom.draftQueueMsg);
+}
+
+function promptDraftRejectReason(selectedCount) {
+  const countText = selectedCount > 1 ? `${selectedCount} טיוטות` : "טיוטה אחת";
+  const raw = window.prompt(
+    `סיבת דחייה עבור ${countText}:`,
+    "נדרש חידוד ניסוח/מקור לפני פרסום",
+  );
+  if (raw === null) {
+    return null;
+  }
+  const reason = normalizeSpace(raw);
+  if (!reason) {
+    window.alert("נדרש להזין סיבת דחייה.");
+    return null;
+  }
+  return clampText(reason, DRAFT_REJECT_REASON_MAX_LEN);
+}
+
+function getDraftQueueView() {
+  const allDrafts = readDraftQueue();
+  const statusFilter = normalizeSpace(dom.draftQueueStatusFilter?.value).toLowerCase() || "all";
+  const searchText = normalizeSpace(dom.draftQueueSearchInput?.value).toLowerCase();
+  const filtered = allDrafts.filter((draft) => {
+    const status = normalizeDraftWorkflowStatus(draft.workflowStatus);
+    if (statusFilter !== "all" && status !== statusFilter) {
+      return false;
+    }
+
+    if (!searchText) {
+      return true;
+    }
+    const sourceText = Array.isArray(draft.sources)
+      ? draft.sources.map((source) => `${source.label} ${source.url}`).join(" ")
+      : "";
+    const haystack = `${draft.question} ${draft.learn} ${draft.explanation} ${draft.category} ${sourceText}`.toLowerCase();
+    return haystack.includes(searchText);
+  });
+
+  const draftCount = allDrafts.filter((item) => normalizeDraftWorkflowStatus(item.workflowStatus) === "draft").length;
+  const reviewCount = allDrafts.filter((item) => normalizeDraftWorkflowStatus(item.workflowStatus) === "review").length;
+
+  adminState.lastVisibleDraftIds = filtered.map((item) => normalizeSpace(item.id)).filter(Boolean);
+  syncDraftSelection(allDrafts.map((item) => normalizeSpace(item.id)).filter(Boolean));
+
+  return {
+    allDrafts,
+    filtered,
+    draftCount,
+    reviewCount,
+    selectedCount: adminState.draftSelectionIds.length,
+  };
+}
+
 function renderDrafts() {
-  const drafts = readStorage(STORAGE_KEYS.drafts, []);
+  const queue = getDraftQueueView();
+  const { allDrafts, filtered, draftCount, reviewCount, selectedCount } = queue;
   dom.draftsList.innerHTML = "";
 
-  if (!drafts.length) {
-    dom.draftsList.appendChild(makeInfoMessage("אין כרגע טיוטות לאישור."));
+  if (dom.draftQueueSummary) {
+    dom.draftQueueSummary.textContent =
+      `סה"כ: ${allDrafts.length} | Draft: ${draftCount} | Review: ${reviewCount} | נבחרו: ${selectedCount}`;
+  }
+
+  const selectedSet = new Set(adminState.draftSelectionIds);
+  const selectedDraftCount = allDrafts.filter(
+    (item) => selectedSet.has(normalizeSpace(item.id))
+      && normalizeDraftWorkflowStatus(item.workflowStatus) === "draft",
+  ).length;
+  const selectedReviewCount = allDrafts.filter(
+    (item) => selectedSet.has(normalizeSpace(item.id))
+      && normalizeDraftWorkflowStatus(item.workflowStatus) === "review",
+  ).length;
+
+  if (dom.moveDraftsToReviewBtn) {
+    dom.moveDraftsToReviewBtn.disabled = selectedDraftCount === 0;
+  }
+  if (dom.moveDraftsToDraftBtn) {
+    dom.moveDraftsToDraftBtn.disabled = selectedReviewCount === 0;
+  }
+  if (dom.approveSelectedDraftsBtn) {
+    dom.approveSelectedDraftsBtn.disabled = selectedReviewCount === 0;
+  }
+  if (dom.rejectSelectedDraftsBtn) {
+    dom.rejectSelectedDraftsBtn.disabled = selectedCount === 0;
+  }
+  if (dom.undoDraftActionBtn) {
+    dom.undoDraftActionBtn.disabled = readDraftActionLog().length === 0;
+  }
+  if (dom.selectVisibleDraftsBtn) {
+    dom.selectVisibleDraftsBtn.disabled = queue.filtered.length === 0;
+  }
+  if (dom.clearDraftSelectionBtn) {
+    dom.clearDraftSelectionBtn.disabled = selectedCount === 0;
+  }
+
+  if (!allDrafts.length) {
+    dom.draftsList.appendChild(makeInfoMessage("אין כרגע טיוטות בתור הפרסום."));
     return;
   }
 
-  drafts.forEach((draft) => {
+  if (!filtered.length) {
+    dom.draftsList.appendChild(makeInfoMessage("אין טיוטות שתואמות לפילטר הנוכחי."));
+    return;
+  }
+
+  filtered.forEach((draft) => {
     const quality = evaluateDraftQuality(draft);
+    const draftId = normalizeSpace(draft.id);
+    const status = normalizeDraftWorkflowStatus(draft.workflowStatus);
+    const isSelected = selectedSet.has(draftId);
+
     const card = document.createElement("article");
     card.className = "info-card";
 
@@ -3318,6 +3837,10 @@ function renderDrafts() {
     const badgeRow = document.createElement("div");
     badgeRow.className = "badge-row";
 
+    const statusBadge = document.createElement("span");
+    statusBadge.className = `badge draft-status ${status}`;
+    statusBadge.textContent = status === "review" ? "Review" : "Draft";
+
     const dateBadge = document.createElement("span");
     dateBadge.className = "badge";
     dateBadge.textContent = formatDateDisplay(draft.date);
@@ -3326,6 +3849,7 @@ function renderDrafts() {
     categoryBadge.className = "badge";
     categoryBadge.textContent = draft.category;
 
+    badgeRow.appendChild(statusBadge);
     badgeRow.appendChild(dateBadge);
     badgeRow.appendChild(categoryBadge);
 
@@ -3348,30 +3872,76 @@ function renderDrafts() {
     const qualitySummary = document.createElement("p");
     qualitySummary.className = quality.isReadyToApprove ? "quality-summary ok" : "quality-summary bad";
     qualitySummary.textContent = quality.isReadyToApprove
-      ? "צ'קליסט איכות: תקין - אפשר לאשר."
-      : "צ'קליסט איכות: חסרים סעיפים מחייבים, לא ניתן לאשר עדיין.";
+      ? "צ'קליסט איכות: תקין - אפשר לפרסם אחרי Review."
+      : "צ'קליסט איכות: חסרים סעיפים מחייבים, לא ניתן לפרסם עדיין.";
 
     const qualityList = renderDraftQualityChecklist(quality);
+
+    const selectionRow = document.createElement("div");
+    selectionRow.className = "inline-actions";
+
+    const selectLabel = document.createElement("label");
+    selectLabel.className = "draft-select-label";
+    const selectInput = document.createElement("input");
+    selectInput.type = "checkbox";
+    selectInput.checked = isSelected;
+    selectInput.addEventListener("change", () => {
+      toggleDraftSelection(draftId, selectInput.checked);
+      renderDrafts();
+    });
+    const selectText = document.createElement("span");
+    selectText.textContent = "בחר לטיפול מרוכז";
+    selectLabel.appendChild(selectInput);
+    selectLabel.appendChild(selectText);
+    selectionRow.appendChild(selectLabel);
 
     const actions = document.createElement("div");
     actions.className = "inline-actions";
 
+    const toggleReviewBtn = document.createElement("button");
+    toggleReviewBtn.type = "button";
+    toggleReviewBtn.className = status === "review" ? "ghost-btn" : "secondary-btn";
+    toggleReviewBtn.textContent = status === "review" ? "החזר ל-Draft" : "העבר ל-Review";
+    toggleReviewBtn.addEventListener("click", () => {
+      const nextStatus = status === "review" ? "draft" : "review";
+      const drafts = readDraftQueue().map((item) =>
+        normalizeSpace(item.id) === draftId
+          ? { ...item, workflowStatus: nextStatus }
+          : item);
+      const saved = writeDraftQueue(drafts);
+      if (!saved) {
+        setDraftQueueMessage("עדכון הסטטוס נכשל בגלל מגבלת אחסון בדפדפן.", false);
+        return;
+      }
+      setDraftQueueMessage(
+        nextStatus === "review"
+          ? "הטיוטה הועברה ל-Review."
+          : "הטיוטה הוחזרה ל-Draft.",
+        true,
+      );
+      renderDrafts();
+      renderAdminStats();
+    });
+
     const approveBtn = document.createElement("button");
     approveBtn.type = "button";
     approveBtn.className = "primary-btn";
-    approveBtn.textContent = "אשר והוסף למאגר";
-    approveBtn.disabled = !quality.isReadyToApprove;
-    if (!quality.isReadyToApprove) {
-      approveBtn.title = "יש לתקן את כל סעיפי החובה בצ'קליסט לפני אישור.";
+    approveBtn.textContent = "פרסם למאגר";
+    approveBtn.disabled = status !== "review" || !quality.isReadyToApprove;
+    if (status !== "review") {
+      approveBtn.title = "יש להעביר ל-Review לפני פרסום.";
+    } else if (!quality.isReadyToApprove) {
+      approveBtn.title = "יש לתקן את כל סעיפי החובה בצ'קליסט לפני פרסום.";
     }
-    approveBtn.addEventListener("click", () => approveDraft(draft.id));
+    approveBtn.addEventListener("click", () => approveDraft(draftId));
 
     const rejectBtn = document.createElement("button");
     rejectBtn.type = "button";
     rejectBtn.className = "ghost-btn";
     rejectBtn.textContent = "דחה טיוטה";
-    rejectBtn.addEventListener("click", () => rejectDraft(draft.id));
+    rejectBtn.addEventListener("click", () => rejectDraft(draftId));
 
+    actions.appendChild(toggleReviewBtn);
     actions.appendChild(approveBtn);
     actions.appendChild(rejectBtn);
 
@@ -3392,58 +3962,208 @@ function renderDrafts() {
       card.appendChild(sourceLine);
     }
 
+    card.appendChild(selectionRow);
     card.appendChild(actions);
     dom.draftsList.appendChild(card);
   });
 }
 
-function approveDraft(draftId) {
-  const drafts = readStorage(STORAGE_KEYS.drafts, []);
-  const target = drafts.find((item) => item.id === draftId);
-  if (!target) {
+function moveSelectedDraftsToStatus(nextStatus) {
+  const targetStatus = normalizeDraftWorkflowStatus(nextStatus);
+  const selectedSet = new Set(adminState.draftSelectionIds.map((id) => normalizeSpace(id)));
+  if (!selectedSet.size) {
+    setDraftQueueMessage("לא נבחרו טיוטות לעדכון.", false);
     return;
   }
 
-  const quality = evaluateDraftQuality(target);
-  if (!quality.isReadyToApprove) {
-    showMessage(
-      dom.activityFormMsg,
-      "לא ניתן לאשר: טיוטה לא עברה את צ'קליסט האיכות (למשל שאלה מבוססת תאריך בלבד או הסבר חלש).",
-      false,
-    );
+  const drafts = readDraftQueue();
+  let changedCount = 0;
+  const updated = drafts.map((draft) => {
+    const safeId = normalizeSpace(draft.id);
+    if (!selectedSet.has(safeId)) {
+      return draft;
+    }
+    const currentStatus = normalizeDraftWorkflowStatus(draft.workflowStatus);
+    if (currentStatus === targetStatus) {
+      return draft;
+    }
+    changedCount += 1;
+    return { ...draft, workflowStatus: targetStatus };
+  });
+
+  if (!changedCount) {
+    setDraftQueueMessage("הטיוטות שנבחרו כבר נמצאות בסטטוס הזה.", false);
+    return;
+  }
+
+  const saved = writeDraftQueue(updated);
+  if (!saved) {
+    setDraftQueueMessage("עדכון הסטטוס נכשל בגלל מגבלת אחסון בדפדפן.", false);
+    return;
+  }
+
+  setDraftQueueMessage(
+    targetStatus === "review"
+      ? `הועברו ${changedCount} טיוטות ל-Review.`
+      : `הוחזרו ${changedCount} טיוטות ל-Draft.`,
+    true,
+  );
+  renderDrafts();
+  renderAdminStats();
+}
+
+function approveSelectedDrafts() {
+  const selectedSet = new Set(adminState.draftSelectionIds.map((id) => normalizeSpace(id)));
+  if (!selectedSet.size) {
+    setDraftQueueMessage("לא נבחרו טיוטות לפרסום.", false);
+    return;
+  }
+
+  const drafts = readDraftQueue();
+  const selectedReviewIds = drafts
+    .filter((draft) =>
+      selectedSet.has(normalizeSpace(draft.id))
+      && normalizeDraftWorkflowStatus(draft.workflowStatus) === "review")
+    .map((draft) => draft.id);
+
+  if (!selectedReviewIds.length) {
+    setDraftQueueMessage("רק טיוטות ב-Review ניתנות לפרסום.", false);
+    return;
+  }
+
+  const result = approveDraftsBulk(selectedReviewIds, { requireReview: true });
+  if (!result) {
+    setDraftQueueMessage("פרסום מרוכז נכשל בגלל מגבלת אחסון בדפדפן.", false);
+    return;
+  }
+
+  const notReadyCount = Math.max(0, result.skippedCount);
+  setDraftQueueMessage(
+    `פורסמו ${result.approvedCount} טיוטות למאגר.${notReadyCount ? ` דולגו ${notReadyCount} טיוטות שלא עברו צ'קליסט.` : ""}`,
+    true,
+  );
+  renderAdminStats();
+  renderDrafts();
+  renderCustomQuestions();
+  renderAllQuestionsManager();
+  renderLongTextDraftsPreview();
+}
+
+function rejectSelectedDrafts() {
+  const selectedSet = new Set(adminState.draftSelectionIds.map((id) => normalizeSpace(id)));
+  if (!selectedSet.size) {
+    setDraftQueueMessage("לא נבחרו טיוטות לדחייה.", false);
+    return;
+  }
+
+  const drafts = readDraftQueue();
+  const selectedDrafts = drafts.filter((draft) => selectedSet.has(normalizeSpace(draft.id)));
+  if (!selectedDrafts.length) {
+    setDraftQueueMessage("לא נמצאו טיוטות תואמות לבחירה.", false);
+    return;
+  }
+
+  const rejectReason = promptDraftRejectReason(selectedDrafts.length);
+  if (rejectReason === null) {
+    return;
+  }
+
+  const selectedIds = new Set(selectedDrafts.map((draft) => normalizeSpace(draft.id)));
+  const remaining = drafts.filter((draft) => !selectedIds.has(normalizeSpace(draft.id)));
+  const saved = writeDraftQueue(remaining);
+  if (!saved) {
+    setDraftQueueMessage("דחיית הטיוטות נכשלה בגלל מגבלת אחסון בדפדפן.", false);
+    return;
+  }
+
+  const rejectedAt = new Date().toISOString();
+  pushDraftActionLogEntry({
+    id: uid("draft_action"),
+    type: "reject",
+    createdAt: rejectedAt,
+    reason: rejectReason,
+    drafts: selectedDrafts.map((draft) => ({
+      ...draft,
+      workflowStatus: "draft",
+      rejectedAt,
+      rejectedReason: rejectReason,
+    })),
+  });
+
+  adminState.lastLongTextBatchDraftIds = adminState.lastLongTextBatchDraftIds
+    .filter((item) => !selectedIds.has(normalizeSpace(item)));
+  dom.approveAllTextDraftsBtn.disabled = adminState.lastLongTextBatchDraftIds.length === 0;
+  adminState.draftSelectionIds = [];
+
+  setDraftQueueMessage(`נדחו ${selectedDrafts.length} טיוטות. ניתן לבצע Undo.`, true);
+  renderAdminStats();
+  renderDrafts();
+  renderAllQuestionsManager();
+  renderLongTextDraftsPreview();
+}
+
+function undoLastDraftAction() {
+  const action = popDraftActionLogEntry();
+  if (!action) {
+    setDraftQueueMessage("אין פעולה אחרונה לביטול.", false);
+    return;
+  }
+
+  if (action.type !== "reject" || !Array.isArray(action.drafts) || !action.drafts.length) {
+    setDraftQueueMessage("לא ניתן לבטל את הפעולה האחרונה.", false);
+    return;
+  }
+
+  const currentDrafts = readDraftQueue();
+  const restored = action.drafts
+    .map((draft) => sanitizeDraftRecord({
+      ...draft,
+      workflowStatus: normalizeDraftWorkflowStatus(draft.workflowStatus || "draft"),
+    }))
+    .filter(Boolean);
+  const restoredIds = new Set(restored.map((item) => normalizeSpace(item.id)));
+  const merged = [...restored, ...currentDrafts.filter((item) => !restoredIds.has(normalizeSpace(item.id)))];
+
+  const saved = writeDraftQueue(merged);
+  if (!saved) {
+    setDraftQueueMessage("ביטול הפעולה נכשל בגלל מגבלת אחסון בדפדפן.", false);
+    return;
+  }
+
+  const restoredBatchIds = restored
+    .map((draft) => normalizeSpace(draft.id))
+    .filter(Boolean);
+  adminState.lastLongTextBatchDraftIds = Array.from(new Set([
+    ...restoredBatchIds,
+    ...adminState.lastLongTextBatchDraftIds,
+  ]));
+  dom.approveAllTextDraftsBtn.disabled = adminState.lastLongTextBatchDraftIds.length === 0;
+
+  setDraftQueueMessage(`בוצע Undo. הוחזרו ${restored.length} טיוטות לתור.`, true);
+  renderAdminStats();
+  renderDrafts();
+  renderAllQuestionsManager();
+  renderLongTextDraftsPreview();
+}
+
+function approveDraft(draftId) {
+  const safeId = normalizeSpace(draftId);
+  if (!safeId) {
+    return;
+  }
+
+  const result = approveDraftsBulk([safeId], { requireReview: true });
+  if (!result) {
+    setDraftQueueMessage("פרסום הטיוטה נכשל בגלל מגבלת אחסון בדפדפן.", false);
+    return;
+  }
+  if (!result.approvedCount) {
+    setDraftQueueMessage("לא ניתן לפרסם: הטיוטה לא ב-Review או לא עברה צ'קליסט איכות.", false);
     renderDrafts();
     return;
   }
 
-  const remainingDrafts = drafts.filter((item) => item.id !== draftId);
-  const customQuestions = readStorage(STORAGE_KEYS.customQuestions, []);
-
-  const customQuestion = {
-    ...target,
-    id: uid("cq"),
-    optionExplanations: ensureOptionExplanations(target),
-    approvedAt: new Date().toISOString(),
-    allowLegacySuccess: target.kind === "success" && target.date < MIN_CONTENT_DATE,
-  };
-
-  const savedDrafts = writeStorage(STORAGE_KEYS.drafts, remainingDrafts);
-  const savedCustom = writeStorage(
-    STORAGE_KEYS.customQuestions,
-    [customQuestion, ...customQuestions].slice(0, 500),
-  );
-  if (!savedDrafts || !savedCustom) {
-    showMessage(
-      dom.activityFormMsg,
-      "אישור הטיוטה נכשל בגלל מגבלת אחסון בדפדפן. נסה לצמצם נתונים.",
-      false,
-    );
-    return;
-  }
-
-  adminState.lastLongTextBatchDraftIds = adminState.lastLongTextBatchDraftIds
-    .filter((item) => item !== draftId);
-  dom.approveAllTextDraftsBtn.disabled = adminState.lastLongTextBatchDraftIds.length === 0;
-
+  setDraftQueueMessage("הטיוטה פורסמה למאגר בהצלחה.", true);
   renderAdminStats();
   renderDrafts();
   renderCustomQuestions();
@@ -3452,22 +4172,48 @@ function approveDraft(draftId) {
 }
 
 function rejectDraft(draftId) {
-  const drafts = readStorage(STORAGE_KEYS.drafts, []);
-  const remaining = drafts.filter((item) => item.id !== draftId);
-  const saved = writeStorage(STORAGE_KEYS.drafts, remaining);
-  if (!saved) {
-    showMessage(
-      dom.activityFormMsg,
-      "דחיית הטיוטה נכשלה בגלל מגבלת אחסון בדפדפן.",
-      false,
-    );
+  const safeId = normalizeSpace(draftId);
+  if (!safeId) {
     return;
   }
 
+  const drafts = readDraftQueue();
+  const target = drafts.find((item) => normalizeSpace(item.id) === safeId);
+  if (!target) {
+    return;
+  }
+
+  const rejectReason = promptDraftRejectReason(1);
+  if (rejectReason === null) {
+    return;
+  }
+
+  const remaining = drafts.filter((item) => normalizeSpace(item.id) !== safeId);
+  const saved = writeDraftQueue(remaining);
+  if (!saved) {
+    setDraftQueueMessage("דחיית הטיוטה נכשלה בגלל מגבלת אחסון בדפדפן.", false);
+    return;
+  }
+
+  const rejectedAt = new Date().toISOString();
+  pushDraftActionLogEntry({
+    id: uid("draft_action"),
+    type: "reject",
+    createdAt: rejectedAt,
+    reason: rejectReason,
+    drafts: [{
+      ...target,
+      workflowStatus: "draft",
+      rejectedAt,
+      rejectedReason: rejectReason,
+    }],
+  });
+
   adminState.lastLongTextBatchDraftIds = adminState.lastLongTextBatchDraftIds
-    .filter((item) => item !== draftId);
+    .filter((item) => normalizeSpace(item) !== safeId);
   dom.approveAllTextDraftsBtn.disabled = adminState.lastLongTextBatchDraftIds.length === 0;
 
+  setDraftQueueMessage("הטיוטה נדחתה ונשמרה סיבת הדחייה (זמין Undo).", true);
   renderAdminStats();
   renderDrafts();
   renderAllQuestionsManager();
@@ -4068,52 +4814,308 @@ function renderCustomQuestions() {
   });
 }
 
+function resetQuestionFilters() {
+  if (dom.questionSearchInput) {
+    dom.questionSearchInput.value = "";
+  }
+  if (dom.questionCategoryFilter) {
+    dom.questionCategoryFilter.value = "all";
+  }
+  if (dom.questionKindFilter) {
+    dom.questionKindFilter.value = "all";
+  }
+  if (dom.questionVisibilityFilter) {
+    dom.questionVisibilityFilter.value = "all";
+  }
+  if (dom.questionSourceFilter) {
+    dom.questionSourceFilter.value = "all";
+  }
+  if (dom.questionDateFrom) {
+    dom.questionDateFrom.value = "";
+  }
+  if (dom.questionDateTo) {
+    dom.questionDateTo.value = "";
+  }
+  if (dom.questionSortMode) {
+    dom.questionSortMode.value = "default";
+  }
+  renderAllQuestionsManager();
+}
+
+function normalizeQuestionKindFilterValue(value) {
+  const safe = normalizeSpace(value).toLowerCase();
+  if (safe === "success") {
+    return "success";
+  }
+  if (safe === "activity") {
+    return "activity";
+  }
+  return "";
+}
+
+function normalizeFilterDateValue(value) {
+  const safe = normalizeSpace(value);
+  return /^\d{4}-\d{2}-\d{2}$/.test(safe) ? safe : "";
+}
+
+function buildQuestionPerformanceMap() {
+  const rows = buildQuestionLearningRows(readStorage(STORAGE_KEYS.attempts, []));
+  const map = new Map();
+  rows.forEach((row) => {
+    map.set(normalizeSpace(row.id), row);
+  });
+  return map;
+}
+
+function buildQuestionQualitySnapshot(question) {
+  const audit = auditSingleQuestionDetailed(question);
+  const highCount = audit.issues.filter((item) => item.level === "high").length;
+  const mediumCount = Math.max(0, audit.issues.length - highCount);
+  return {
+    issues: audit.issues,
+    highCount,
+    mediumCount,
+    riskScore: highCount * 6 + mediumCount * 2,
+    topIssue: audit.issues[0]?.message || "",
+  };
+}
+
+function sortQuestionManagerRows(rows, sortMode) {
+  if (!Array.isArray(rows) || rows.length <= 1) {
+    return rows || [];
+  }
+
+  const safeMode = normalizeSpace(sortMode).toLowerCase() || "default";
+  if (safeMode === "newest") {
+    rows.sort((a, b) => {
+      if (a.date !== b.date) {
+        return a.date < b.date ? 1 : -1;
+      }
+      return a.questionText.localeCompare(b.questionText, "he");
+    });
+    return rows;
+  }
+
+  if (safeMode === "hardest") {
+    rows.sort((a, b) => {
+      const aRisk = Number(a.performance?.riskScore || -1);
+      const bRisk = Number(b.performance?.riskScore || -1);
+      if (aRisk !== bRisk) {
+        return bRisk - aRisk;
+      }
+      const aSample = Number(a.performance?.total || 0);
+      const bSample = Number(b.performance?.total || 0);
+      if (aSample !== bSample) {
+        return bSample - aSample;
+      }
+      return a.questionText.localeCompare(b.questionText, "he");
+    });
+    return rows;
+  }
+
+  if (safeMode === "quality-risk") {
+    rows.sort((a, b) => {
+      if (a.quality.riskScore !== b.quality.riskScore) {
+        return b.quality.riskScore - a.quality.riskScore;
+      }
+      return a.questionText.localeCompare(b.questionText, "he");
+    });
+    return rows;
+  }
+
+  return rows;
+}
+
 function renderAllQuestionsManager() {
   const inventory = getQuestionInventory();
-  const searchText = String(dom.questionSearchInput.value || "").trim().toLowerCase();
+  const searchText = normalizeSpace(dom.questionSearchInput?.value).toLowerCase();
+  const selectedCategory = normalizeSpace(dom.questionCategoryFilter?.value);
+  const selectedKind = normalizeQuestionKindFilterValue(dom.questionKindFilter?.value);
+  const visibilityFilter = normalizeSpace(dom.questionVisibilityFilter?.value).toLowerCase() || "all";
+  const sourceFilter = normalizeSpace(dom.questionSourceFilter?.value).toLowerCase() || "all";
+  const dateFrom = normalizeFilterDateValue(dom.questionDateFrom?.value);
+  const dateTo = normalizeFilterDateValue(dom.questionDateTo?.value);
+  const sortMode = normalizeSpace(dom.questionSortMode?.value).toLowerCase() || "default";
 
-  const filtered = inventory.allQuestions.filter((question) => {
-    if (!searchText) {
-      return true;
-    }
+  const customIds = new Set(
+    readStorage(STORAGE_KEYS.customQuestions, [])
+      .map((item) => normalizeSpace(item?.id))
+      .filter(Boolean),
+  );
+  const performanceMap = buildQuestionPerformanceMap();
+
+  const rows = inventory.allQuestions.map((question) => {
+    const id = normalizeSpace(question.id);
+    const questionText = normalizeSpace(question.question) || `שאלה ${id || "ללא מזהה"}`;
+    const kind = normalizeQuestionKindFilterValue(question.kind) || "activity";
+    const date = normalizeFilterDateValue(question.date);
+    const disabled = inventory.disabledIds.has(id);
+    const isCustom = customIds.has(id);
+    const hasSource = normalizeQuestionSources(question.sources, question).length > 0;
+    const quality = buildQuestionQualitySnapshot(question);
+    const performance = performanceMap.get(id) || null;
+
     const sourceText = Array.isArray(question.sources)
-      ? question.sources.map((source) => `${source.label} ${source.url}`).join(" ")
+      ? question.sources.map((source) => `${source?.label || ""} ${source?.url || ""}`).join(" ")
       : "";
-    const haystack = `${question.question} ${question.learn} ${question.explanation} ${sourceText}`.toLowerCase();
-    return haystack.includes(searchText);
+    const haystack = [
+      id,
+      questionText,
+      normalizeSpace(question.learn),
+      normalizeSpace(question.explanation),
+      normalizeSpace(question.category),
+      sourceText,
+      sanitizeOptionsList(question.options).join(" "),
+    ].join(" ").toLowerCase();
+
+    return {
+      id,
+      question,
+      questionText,
+      kind,
+      date,
+      disabled,
+      isCustom,
+      hasSource,
+      quality,
+      performance,
+      haystack,
+    };
   });
+
+  const filteredRows = rows.filter((row) => {
+    if (searchText && !row.haystack.includes(searchText)) {
+      return false;
+    }
+
+    if (selectedCategory && selectedCategory !== "all") {
+      const category = normalizeSpace(row.question.category);
+      if (category !== selectedCategory) {
+        return false;
+      }
+    }
+
+    if (selectedKind && row.kind !== selectedKind) {
+      return false;
+    }
+
+    if (visibilityFilter === "active" && row.disabled) {
+      return false;
+    }
+    if (visibilityFilter === "hidden" && !row.disabled) {
+      return false;
+    }
+    if (visibilityFilter === "custom" && !row.isCustom) {
+      return false;
+    }
+    if (visibilityFilter === "base" && row.isCustom) {
+      return false;
+    }
+
+    if (sourceFilter === "with-source" && !row.hasSource) {
+      return false;
+    }
+    if (sourceFilter === "no-source" && row.hasSource) {
+      return false;
+    }
+
+    if (dateFrom && (!row.date || row.date < dateFrom)) {
+      return false;
+    }
+    if (dateTo && (!row.date || row.date > dateTo)) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const sortedRows = sortQuestionManagerRows(filteredRows.slice(), sortMode);
+
+  if (dom.questionCountExact) {
+    dom.questionCountExact.textContent =
+      `שאלות פעילות במאגר: ${inventory.activeQuestions.length} | ` +
+      `מוסתרות: ${inventory.disabledIds.size} | ` +
+      `סך הכול: ${inventory.allQuestions.length} | ` +
+      `בתצוגה: ${sortedRows.length}`;
+  }
 
   dom.allQuestionsList.innerHTML = "";
 
-  if (!filtered.length) {
+  if (!sortedRows.length) {
     dom.allQuestionsList.appendChild(makeInfoMessage("לא נמצאו שאלות לפי החיפוש."));
     renderQuestionAuditReport(inventory);
     return;
   }
 
   const renderCap = 160;
-  const visibleList = filtered.slice(0, renderCap);
-  visibleList.forEach((question) => {
-    const disabled = inventory.disabledIds.has(question.id);
+  const visibleList = sortedRows.slice(0, renderCap);
+  visibleList.forEach((row) => {
+    const {
+      question,
+      id,
+      kind,
+      date,
+      disabled,
+      isCustom,
+      hasSource,
+      quality,
+      performance,
+    } = row;
     const card = document.createElement("article");
     card.className = "info-card";
 
     const title = document.createElement("h4");
-    title.textContent = question.question;
+    title.textContent = question.question || row.questionText;
+
+    const badgeRow = document.createElement("div");
+    badgeRow.className = "badge-row";
+
+    const visibilityBadge = document.createElement("span");
+    visibilityBadge.className = `badge question-visibility ${disabled ? "hidden" : "active"}`;
+    visibilityBadge.textContent = disabled ? "מוסתרת" : "פעילה";
+
+    const kindBadge = document.createElement("span");
+    kindBadge.className = `badge ${kind === "success" ? "success" : "activity"}`;
+    kindBadge.textContent = kind === "success" ? "הישג" : "פעילות";
+
+    const sourceBadge = document.createElement("span");
+    sourceBadge.className = "badge";
+    sourceBadge.textContent = hasSource ? "עם מקור" : "ללא מקור";
+
+    const originBadge = document.createElement("span");
+    originBadge.className = "badge";
+    originBadge.textContent = isCustom ? "Published" : "Base";
+
+    badgeRow.appendChild(visibilityBadge);
+    badgeRow.appendChild(kindBadge);
+    badgeRow.appendChild(sourceBadge);
+    badgeRow.appendChild(originBadge);
+
+    if (date) {
+      const dateBadge = document.createElement("span");
+      dateBadge.className = "badge";
+      dateBadge.textContent = formatDateDisplay(date);
+      badgeRow.appendChild(dateBadge);
+    }
+
+    if (question.category) {
+      const categoryBadge = document.createElement("span");
+      categoryBadge.className = "badge";
+      categoryBadge.textContent = question.category;
+      badgeRow.appendChild(categoryBadge);
+    }
 
     const answerLine = document.createElement("p");
     answerLine.textContent = `תשובה נכונה: ${question.options[question.answer]}`;
 
     const metaLine = document.createElement("p");
-    metaLine.textContent = disabled
-      ? "סטטוס: מוסתר מהמשחק"
-      : "סטטוס: פעיל במשחק";
+    metaLine.className = "muted tight";
+    metaLine.textContent = `מזהה: ${id} | סטטוס: ${disabled ? "מוסתרת מהמשחק" : "פעילה במשחק"}`;
 
-    const qualityIssues = getQuestionQualityIssues(question);
     const qualityLine = document.createElement("p");
     qualityLine.className = "muted";
-    qualityLine.textContent = qualityIssues.length
-      ? `איכות תוכן: דורש שיפור (${qualityIssues[0]})`
+    qualityLine.textContent = quality.issues.length
+      ? `איכות תוכן: דורש שיפור (${quality.topIssue})`
       : "איכות תוכן: תקין (ניסוח, תשובה, מסיחים ומקור)";
 
     const actionRow = document.createElement("div");
@@ -4123,7 +5125,7 @@ function renderAllQuestionsManager() {
     editBtn.type = "button";
     editBtn.className = "ghost-btn";
     editBtn.textContent = "ערוך";
-    editBtn.addEventListener("click", () => editQuestion(question.id));
+    editBtn.addEventListener("click", () => editQuestion(id));
 
     const deleteBtn = document.createElement("button");
     deleteBtn.type = "button";
@@ -4131,9 +5133,9 @@ function renderAllQuestionsManager() {
     deleteBtn.textContent = disabled ? "החזר למשחק" : "הסר מהמאגר";
     deleteBtn.addEventListener("click", () => {
       if (disabled) {
-        restoreQuestion(question.id);
+        restoreQuestion(id);
       } else {
-        removeQuestion(question.id);
+        removeQuestion(id);
       }
     });
 
@@ -4141,17 +5143,27 @@ function renderAllQuestionsManager() {
     actionRow.appendChild(deleteBtn);
 
     card.appendChild(title);
+    card.appendChild(badgeRow);
     card.appendChild(answerLine);
     card.appendChild(metaLine);
     card.appendChild(qualityLine);
+
+    if (performance && performance.total >= 2) {
+      const performanceLine = document.createElement("p");
+      performanceLine.className = "muted tight";
+      performanceLine.textContent =
+        `ביצוע למידה: סיכון ${performance.riskScore}/100 | דיוק ${performance.accuracy}% | זמן ממוצע ${performance.avgSec} ש׳`;
+      card.appendChild(performanceLine);
+    }
+
     card.appendChild(actionRow);
     dom.allQuestionsList.appendChild(card);
   });
 
-  if (filtered.length > renderCap) {
+  if (sortedRows.length > renderCap) {
     const note = document.createElement("p");
     note.className = "muted";
-    note.textContent = `מוצגות ${renderCap} שאלות ראשונות מתוך ${filtered.length}. השתמש בחיפוש לסינון מדויק.`;
+    note.textContent = `מוצגות ${renderCap} שאלות ראשונות מתוך ${sortedRows.length}. השתמש בפילטרים לסינון מדויק.`;
     dom.allQuestionsList.appendChild(note);
   }
 
@@ -4685,19 +5697,23 @@ function generateDraftsFromLongTextInput() {
     sourceUrl,
   });
 
-  const existingDrafts = readStorage(STORAGE_KEYS.drafts, []);
-  const mergedDrafts = [...generated.drafts, ...existingDrafts].slice(0, 500);
-  const saved = writeStorage(STORAGE_KEYS.drafts, mergedDrafts);
+  const generatedWithWorkflow = generated.drafts.map((draft) => ({
+    ...draft,
+    workflowStatus: "draft",
+  }));
+  const existingDrafts = readDraftQueue();
+  const mergedDrafts = [...generatedWithWorkflow, ...existingDrafts].slice(0, 500);
+  const saved = writeDraftQueue(mergedDrafts);
   if (!saved) {
     showMessage(dom.longTextMsg, "יצירת הטיוטות נכשלה בגלל מגבלת אחסון בדפדפן.", false);
     return;
   }
 
-  adminState.lastLongTextBatchDraftIds = generated.drafts.map((draft) => draft.id);
+  adminState.lastLongTextBatchDraftIds = generatedWithWorkflow.map((draft) => draft.id);
   dom.approveAllTextDraftsBtn.disabled = adminState.lastLongTextBatchDraftIds.length === 0;
   showMessage(
     dom.longTextMsg,
-    `נוצרו ${generated.drafts.length} טיוטות מהטקסט. אפשר לאשר אחת-אחת או להוסיף את כולן בלחיצה אחת.`,
+    `נוצרו ${generatedWithWorkflow.length} טיוטות מהטקסט. העבר ל-Review ואז אשר אחת-אחת או בלחיצה מרוכזת.`,
     true,
   );
 
@@ -4706,17 +5722,26 @@ function generateDraftsFromLongTextInput() {
   renderLongTextDraftsPreview();
 }
 
-function approveDraftsBulk(draftIds) {
+function approveDraftsBulk(draftIds, options = {}) {
+  const requireReview = Boolean(options.requireReview);
   const idSet = new Set((draftIds || []).map((id) => normalizeSpace(id)).filter(Boolean));
   if (!idSet.size) {
-    return { approvedCount: 0, skippedCount: 0, remainingDraftIds: [] };
+    return {
+      approvedCount: 0,
+      skippedCount: 0,
+      remainingDraftIds: [],
+      approvedDraftIds: [],
+      skippedDraftIds: [],
+    };
   }
 
-  const drafts = readStorage(STORAGE_KEYS.drafts, []);
+  const drafts = readDraftQueue();
   const customQuestions = readStorage(STORAGE_KEYS.customQuestions, []);
   const nextCustom = customQuestions.slice();
   const remainingDrafts = [];
   const remainingBatch = [];
+  const approvedDraftIds = [];
+  const skippedDraftIds = [];
   let approvedCount = 0;
   let skippedCount = 0;
 
@@ -4726,31 +5751,48 @@ function approveDraftsBulk(draftIds) {
       return;
     }
 
+    if (requireReview && normalizeDraftWorkflowStatus(draft.workflowStatus) !== "review") {
+      skippedCount += 1;
+      skippedDraftIds.push(draft.id);
+      remainingDrafts.push(draft);
+      remainingBatch.push(draft.id);
+      return;
+    }
+
     const quality = evaluateDraftQuality(draft);
     if (!quality.isReadyToApprove) {
       skippedCount += 1;
+      skippedDraftIds.push(draft.id);
       remainingDrafts.push(draft);
       remainingBatch.push(draft.id);
       return;
     }
 
     approvedCount += 1;
+    approvedDraftIds.push(draft.id);
     nextCustom.unshift({
       ...draft,
       id: uid("cq"),
       optionExplanations: ensureOptionExplanations(draft),
       approvedAt: new Date().toISOString(),
+      publishedFromStatus: normalizeDraftWorkflowStatus(draft.workflowStatus),
       allowLegacySuccess: draft.kind === "success" && draft.date < MIN_CONTENT_DATE,
     });
   });
 
-  const savedDrafts = writeStorage(STORAGE_KEYS.drafts, remainingDrafts.slice(0, 500));
+  const savedDrafts = writeDraftQueue(remainingDrafts.slice(0, 500));
   const savedCustom = writeStorage(STORAGE_KEYS.customQuestions, nextCustom.slice(0, 500));
   if (!savedDrafts || !savedCustom) {
     return null;
   }
 
-  return { approvedCount, skippedCount, remainingDraftIds: remainingBatch };
+  return {
+    approvedCount,
+    skippedCount,
+    remainingDraftIds: remainingBatch,
+    approvedDraftIds,
+    skippedDraftIds,
+  };
 }
 
 function approveAllLongTextDrafts() {
@@ -4761,7 +5803,7 @@ function approveAllLongTextDrafts() {
     return;
   }
 
-  const result = approveDraftsBulk(batchIds);
+  const result = approveDraftsBulk(batchIds, { requireReview: true });
   if (!result) {
     showMessage(dom.longTextMsg, "הוספה מרוכזת נכשלה בגלל מגבלת אחסון בדפדפן.", false);
     return;
@@ -4792,12 +5834,13 @@ function renderLongTextDraftsPreview() {
 
   dom.longTextDraftsPreview.innerHTML = "";
   const idSet = new Set(adminState.lastLongTextBatchDraftIds);
-  const allDrafts = readStorage(STORAGE_KEYS.drafts, []);
+  const allDrafts = readDraftQueue();
   const batchDrafts = allDrafts.filter((draft) => idSet.has(draft.id));
 
   if (batchDrafts.length) {
     batchDrafts.forEach((draft) => {
       const quality = evaluateDraftQuality(draft);
+      const status = normalizeDraftWorkflowStatus(draft.workflowStatus);
       const card = document.createElement("article");
       card.className = "info-card";
 
@@ -4807,10 +5850,14 @@ function renderLongTextDraftsPreview() {
       const answerLine = document.createElement("p");
       answerLine.textContent = `תשובה נכונה: ${draft.options[draft.answer]}`;
 
+      const statusLine = document.createElement("p");
+      statusLine.className = "muted tight";
+      statusLine.textContent = `סטטוס תור פרסום: ${status === "review" ? "Review" : "Draft"}`;
+
       const qualityLine = document.createElement("p");
       qualityLine.className = quality.isReadyToApprove ? "quality-summary ok" : "quality-summary bad";
       qualityLine.textContent = quality.isReadyToApprove
-        ? "טיוטה מוכנה לאישור."
+        ? (status === "review" ? "טיוטה מוכנה לפרסום." : "הטיוטה תקינה - העבר ל-Review לפרסום.")
         : "טיוטה דורשת תיקונים לפני אישור.";
 
       const actions = document.createElement("div");
@@ -4819,10 +5866,31 @@ function renderLongTextDraftsPreview() {
       const approveBtn = document.createElement("button");
       approveBtn.type = "button";
       approveBtn.className = "primary-btn";
-      approveBtn.textContent = "אשר שאלה זו";
-      approveBtn.disabled = !quality.isReadyToApprove;
+      approveBtn.textContent = "פרסם שאלה זו";
+      approveBtn.disabled = !quality.isReadyToApprove || status !== "review";
+      if (status !== "review") {
+        approveBtn.title = "יש להעביר את הטיוטה ל-Review לפני פרסום.";
+      }
       approveBtn.addEventListener("click", () => {
         approveDraft(draft.id);
+      });
+
+      const moveToReviewBtn = document.createElement("button");
+      moveToReviewBtn.type = "button";
+      moveToReviewBtn.className = status === "review" ? "ghost-btn" : "secondary-btn";
+      moveToReviewBtn.textContent = status === "review" ? "החזר ל-Draft" : "העבר ל-Review";
+      moveToReviewBtn.addEventListener("click", () => {
+        const updated = readDraftQueue().map((item) =>
+          normalizeSpace(item.id) === normalizeSpace(draft.id)
+            ? { ...item, workflowStatus: status === "review" ? "draft" : "review" }
+            : item);
+        const saved = writeDraftQueue(updated);
+        if (!saved) {
+          showMessage(dom.longTextMsg, "עדכון סטטוס הטיוטה נכשל.", false);
+          return;
+        }
+        renderDrafts();
+        renderLongTextDraftsPreview();
       });
 
       const rejectBtn = document.createElement("button");
@@ -4833,11 +5901,13 @@ function renderLongTextDraftsPreview() {
         rejectDraft(draft.id);
       });
 
+      actions.appendChild(moveToReviewBtn);
       actions.appendChild(approveBtn);
       actions.appendChild(rejectBtn);
 
       card.appendChild(title);
       card.appendChild(answerLine);
+      card.appendChild(statusLine);
       card.appendChild(qualityLine);
       card.appendChild(actions);
       dom.longTextDraftsPreview.appendChild(card);
