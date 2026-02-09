@@ -7,6 +7,21 @@ const MAX_POINTS_PER_QUESTION = 120;
 const MIN_POINTS_PER_CORRECT = 20;
 const ADAPTIVE_PLAYER_MIN_ATTEMPTS = 1;
 const ADAPTIVE_SCORE_MIN_SIGNAL = 1.08;
+const MIN_HUMAN_ANSWER_MS = 280;
+const SEMANTIC_DUPLICATE_MIN_SIMILARITY = 0.76;
+const AMBIGUOUS_QUESTION_MIN_SAMPLE = 6;
+const SPACED_REPETITION_SETTINGS = {
+  minDueBoost: 0.85,
+  overdueBoostPerDay: 0.22,
+  dueSoonWindowDays: 2,
+  dueSoonBoost: 0.32,
+};
+const ANTI_SPAM_RULES = {
+  quickStart: { windowMs: 60_000, maxEvents: 8, blockMs: 15_000 },
+  adminLogin: { windowMs: 5 * 60_000, maxEvents: 7, blockMs: 5 * 60_000 },
+  activitySubmit: { windowMs: 120_000, maxEvents: 5, blockMs: 60_000 },
+  longTextGenerate: { windowMs: 120_000, maxEvents: 8, blockMs: 45_000 },
+};
 const MUSIC_DEFAULT_VOLUME = 0.12;
 const QUALITY_MIN_QUESTION_LEN = 24;
 const QUALITY_MIN_EXPLANATION_LEN = 42;
@@ -37,6 +52,8 @@ const STORAGE_KEYS = {
   familyCycleByScope: "mqg_family_cycle_scope_used_ids_v1",
   adminUsers: "mqg_admin_users_v1",
   learningAlertSettings: "mqg_learning_alert_settings_v1",
+  playerSpacedMemory: "mqg_player_spaced_memory_v1",
+  antiSpamState: "mqg_anti_spam_state_v1",
 };
 const REMOTE_SYNCABLE_KEYS = [
   STORAGE_KEYS.attempts,
@@ -50,6 +67,7 @@ const REMOTE_SYNCABLE_KEYS = [
   STORAGE_KEYS.questionCycleByScope,
   STORAGE_KEYS.familyCycleByScope,
   STORAGE_KEYS.learningAlertSettings,
+  STORAGE_KEYS.playerSpacedMemory,
 ];
 const BACKEND_DEFAULT_CONFIG = {
   enabled: false,
@@ -248,6 +266,48 @@ const LOW_QUALITY_DISTRACTOR_PATTERNS = [
   /ועדת\s*הבחירות/i,
   /בית\s*דין\s*צבאי/i,
 ];
+const DISTRACTOR_FEEDBACK_LIBRARY = {
+  default: [
+    {
+      pattern: /(ללא|בלי)\s+(אכיפה|סנקציות|בדיקה)/i,
+      reason: "האפשרות הזו מתארת היעדר יישום, בזמן שהקו במשחק מדגיש אחריות ויישום בפועל.",
+    },
+    {
+      pattern: /(נדחה|בוטל|לא נקבע)/i,
+      reason: "האפשרות מתארת חוסר התקדמות, אך המקור מצביע על מהלך פעיל או דרישה אופרטיבית.",
+    },
+    {
+      pattern: /(יחסי ציבור|הסברה בלבד|סמלי בלבד)/i,
+      reason: "זו הצגה מצמצמת מדי; הנושאים במשחק מבוססים על צעדים משפטיים/מוסדיים ממשיים.",
+    },
+  ],
+  "שוויון בנטל": [
+    {
+      pattern: /(תמריצים בלבד|ללא אכיפה|ללא סנקציות)/i,
+      reason: "בהקשר של שוויון בנטל, הדגש הוא על אכיפה ומדדי ביצוע ולא רק תמריצים.",
+    },
+    {
+      pattern: /(פטורים רחבים|פטור גורף)/i,
+      reason: "האפשרות סותרת את עקרון השוויון; פטורים אמורים להיות חריגים ומנומקים.",
+    },
+  ],
+  "מערכת המשפט ומינויים": [
+    {
+      pattern: /(ללא ביקורת שיפוטית|ללא בחינה משפטית)/i,
+      reason: "האפשרות מפחיתה את מנגנוני הבקרה, בעוד שהחומר מדגיש הליך תקין ובלמים מוסדיים.",
+    },
+    {
+      pattern: /(מינוי אוטומטי|אישור מיידי ללא בדיקה)/i,
+      reason: "מינויים מחייבים הליך תקין ובקרה; האופציה הזו מדלגת על שלבי בקרה מרכזיים.",
+    },
+  ],
+  "תקשורת ושקיפות": [
+    {
+      pattern: /(ללא פרסום|דיון פנימי בלבד|ללא שקיפות)/i,
+      reason: "בנושא זה הדגש הוא שקיפות ואמון ציבורי, ולכן אפשרות שסוגרת מידע לציבור אינה תואמת.",
+    },
+  ],
+};
 const OFFICIAL_BANNER_IMAGES = [
   "https://mqg.org.il/wp-content/uploads/old/2015/10/rsz_mg_8514.jpg",
   "https://mqg.org.il/wp-content/uploads/old/2015/01/New-Rights-with-Nitzan.jpg",
@@ -1216,6 +1276,7 @@ const gameState = {
   questionStats: {},
   startAt: 0,
   questionStartedAt: 0,
+  questionRenderedAt: 0,
   timerIntervalId: null,
   remainingSeconds: QUESTION_TIMEOUT_SECONDS,
   showLearning: true,
@@ -1509,6 +1570,16 @@ function bindEvents() {
   dom.loginAdminBtn.addEventListener("click", async () => {
     const username = normalizeSpace(dom.adminUsernameInput.value);
     const password = dom.adminPasswordInput.value.trim();
+    const loginBlock = checkAntiSpamBlock("adminLogin");
+    if (loginBlock.blocked) {
+      showMessage(
+        dom.adminLoginError,
+        `יותר מדי ניסיונות התחברות. נסה שוב בעוד ${formatCooldownMs(loginBlock.remainingMs)}.`,
+        false,
+      );
+      return;
+    }
+
     try {
       if (isBackendEnabled()) {
         const payload = await loginWithBackend(username, password);
@@ -1525,6 +1596,7 @@ function bindEvents() {
           createdBy: normalizeSpace(payload?.admin?.createdBy) || "remote",
         };
         hideMessage(dom.adminLoginError);
+        clearAntiSpamEvents("adminLogin");
         await hydrateFromBackendState();
         openAdminPanel();
         startRemoteSyncLoop();
@@ -1543,14 +1615,33 @@ function bindEvents() {
 
       const adminUser = authenticateAdminUser(username, password);
       if (!adminUser) {
+        const antiSpamAttempt = recordAntiSpamEvent("adminLogin", `fail:${username}`);
+        if (antiSpamAttempt.blocked) {
+          showMessage(
+            dom.adminLoginError,
+            `יותר מדי ניסיונות התחברות. נסה שוב בעוד ${formatCooldownMs(antiSpamAttempt.remainingMs)}.`,
+            false,
+          );
+          return;
+        }
         showMessage(dom.adminLoginError, "שם משתמש או סיסמה שגויים. נסה שוב.", false);
         return;
       }
       hideMessage(dom.adminLoginError);
+      clearAntiSpamEvents("adminLogin");
       adminState.currentAdmin = adminUser;
       openAdminPanel();
       ensureMusicPlayback();
     } catch (_err) {
+      const antiSpamAttempt = recordAntiSpamEvent("adminLogin", `fail:${username}`);
+      if (antiSpamAttempt.blocked) {
+        showMessage(
+          dom.adminLoginError,
+          `יותר מדי ניסיונות התחברות. נסה שוב בעוד ${formatCooldownMs(antiSpamAttempt.remainingMs)}.`,
+          false,
+        );
+        return;
+      }
       const backendErrorCode = normalizeSpace(_err?.message).toUpperCase();
       const backendLoginErrorMessages = {
         INVALID_CREDENTIALS: "שם משתמש או סיסמה שגויים.",
@@ -1830,6 +1921,115 @@ function resetQuestionCyclesFlow() {
   );
 }
 
+function formatCooldownMs(remainingMs) {
+  const safeMs = Math.max(0, Number(remainingMs) || 0);
+  const totalSec = Math.ceil(safeMs / 1000);
+  if (totalSec < 60) {
+    return `${totalSec} שניות`;
+  }
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  return sec ? `${min} דק׳ ו-${sec} שנ׳` : `${min} דק׳`;
+}
+
+function readAntiSpamState() {
+  return readObjectStorage(STORAGE_KEYS.antiSpamState, {});
+}
+
+function writeAntiSpamState(nextState) {
+  return writeStorage(STORAGE_KEYS.antiSpamState, nextState);
+}
+
+function getAntiSpamBucket(state, actionKey) {
+  const safeKey = normalizeSpace(actionKey);
+  if (!safeKey) {
+    return null;
+  }
+  const current = state[safeKey];
+  if (current && typeof current === "object") {
+    return current;
+  }
+  state[safeKey] = {
+    events: [],
+    blockedUntil: 0,
+    lastPayloadHash: "",
+    lastPayloadAt: 0,
+  };
+  return state[safeKey];
+}
+
+function pruneAntiSpamEvents(bucket, windowMs, nowTs) {
+  if (!bucket || !Array.isArray(bucket.events)) {
+    return;
+  }
+  const minTs = nowTs - windowMs;
+  bucket.events = bucket.events.filter((item) => Number(item) >= minTs);
+}
+
+function checkAntiSpamBlock(actionKey) {
+  const rule = ANTI_SPAM_RULES[actionKey];
+  if (!rule) {
+    return { blocked: false, remainingMs: 0 };
+  }
+
+  const state = readAntiSpamState();
+  const bucket = getAntiSpamBucket(state, actionKey);
+  const nowTs = Date.now();
+  const blockedUntil = Number(bucket?.blockedUntil || 0);
+  const remainingMs = Math.max(0, blockedUntil - nowTs);
+  return {
+    blocked: remainingMs > 0,
+    remainingMs,
+  };
+}
+
+function clearAntiSpamEvents(actionKey) {
+  const state = readAntiSpamState();
+  const bucket = getAntiSpamBucket(state, actionKey);
+  if (!bucket) {
+    return;
+  }
+  bucket.events = [];
+  bucket.blockedUntil = 0;
+  writeAntiSpamState(state);
+}
+
+function recordAntiSpamEvent(actionKey, payloadHash = "") {
+  const rule = ANTI_SPAM_RULES[actionKey];
+  if (!rule) {
+    return { blocked: false, remainingMs: 0, duplicate: false };
+  }
+
+  const state = readAntiSpamState();
+  const bucket = getAntiSpamBucket(state, actionKey);
+  const nowTs = Date.now();
+  pruneAntiSpamEvents(bucket, rule.windowMs, nowTs);
+
+  const normalizedPayloadHash = normalizeSpace(payloadHash);
+  const isDuplicatePayload = Boolean(
+    normalizedPayloadHash
+      && normalizedPayloadHash === normalizeSpace(bucket.lastPayloadHash)
+      && nowTs - Number(bucket.lastPayloadAt || 0) < 8_000,
+  );
+
+  bucket.events.push(nowTs);
+  bucket.lastPayloadHash = normalizedPayloadHash;
+  bucket.lastPayloadAt = nowTs;
+
+  if (bucket.events.length > rule.maxEvents) {
+    bucket.blockedUntil = nowTs + rule.blockMs;
+  }
+
+  writeAntiSpamState(state);
+
+  const remainingMs = Math.max(0, Number(bucket.blockedUntil || 0) - nowTs);
+  return {
+    blocked: remainingMs > 0,
+    remainingMs,
+    duplicate: isDuplicatePayload,
+  };
+}
+
 function showAppUpdateBanner() {
   dom.appUpdateBanner?.classList.remove("hidden");
 }
@@ -1995,6 +2195,9 @@ function exportHardestQuestionsCsv() {
     "timeout_rate_percent",
     "risk_score",
     "avg_answer_seconds",
+    "issue_cause",
+    "ambiguity_score",
+    "ambiguous_signal",
   ];
   const csvRows = actionable.map((item) => [
     item.id,
@@ -2009,6 +2212,9 @@ function exportHardestQuestionsCsv() {
     item.timeoutRate,
     item.riskScore,
     Number(item.avgSec || 0).toFixed(2),
+    getQuestionIssueCauseLabel(item.issueCause),
+    Number(item.ambiguityScore || 0),
+    Boolean(item.ambiguousSignal),
   ]);
 
   downloadCsvFile(`mqg-hardest-questions-${buildExportTimestamp()}.csv`, headers, csvRows);
@@ -2140,6 +2346,7 @@ function resetAndGoToNewGame() {
   gameState.wrong = [];
   gameState.feedbackDeepOpen = false;
   gameState.questionStartedAt = 0;
+  gameState.questionRenderedAt = 0;
   gameState.remainingSeconds = QUESTION_TIMEOUT_SECONDS;
   gameState.adaptiveMode = false;
   gameState.adaptiveConfidence = 0;
@@ -2154,6 +2361,15 @@ function startQuickGame() {
   hideMessage(dom.quickSetupError);
   hideMessage(dom.questionCycleResetMsg);
   stopQuestionTimer();
+  const antiSpam = recordAntiSpamEvent("quickStart");
+  if (antiSpam.blocked) {
+    showMessage(
+      dom.quickSetupError,
+      `זוהו יותר מדי ניסיונות התחלה בזמן קצר. נסה שוב בעוד ${formatCooldownMs(antiSpam.remainingMs)}.`,
+      false,
+    );
+    return;
+  }
 
   const playerName = dom.playerNameInput.value.trim();
   if (!playerName) {
@@ -2210,6 +2426,7 @@ function startQuickGame() {
   gameState.questionStats = {};
   gameState.startAt = Date.now();
   gameState.questionStartedAt = 0;
+  gameState.questionRenderedAt = 0;
   gameState.remainingSeconds = QUESTION_TIMEOUT_SECONDS;
   gameState.showLearning = dom.showLearningToggle.checked;
   gameState.locked = false;
@@ -2504,6 +2721,7 @@ function renderQuestion() {
     dom.optionsWrap.appendChild(btn);
   });
 
+  gameState.questionRenderedAt = Date.now();
   startQuestionTimer();
 }
 
@@ -2511,6 +2729,14 @@ function answerQuestion(selectedIndex, options = {}) {
   const { timedOut = false } = options;
 
   if (gameState.locked) {
+    return;
+  }
+
+  if (
+    !timedOut
+    && gameState.questionRenderedAt
+    && Date.now() - gameState.questionRenderedAt < MIN_HUMAN_ANSWER_MS
+  ) {
     return;
   }
 
@@ -2526,7 +2752,12 @@ function answerQuestion(selectedIndex, options = {}) {
   }
   const isCorrect = !timedOut && selectedIndex === question.answer;
   updateCategoryPerformance(question, isCorrect, timedOut, elapsedSeconds);
-  updateQuestionPerformance(question, isCorrect, timedOut, elapsedSeconds);
+  updateQuestionPerformance(question, isCorrect, timedOut, elapsedSeconds, selectedIndex);
+  updatePlayerSpacedMemory(gameState.playerName, question, {
+    isCorrect,
+    timedOut,
+    elapsedSeconds,
+  });
   const optionButtons = Array.from(dom.optionsWrap.querySelectorAll(".option-btn"));
 
   optionButtons.forEach((button, index) => {
@@ -2589,7 +2820,7 @@ function updateCategoryPerformance(question, isCorrect, timedOut, elapsedSeconds
   }
 }
 
-function updateQuestionPerformance(question, isCorrect, timedOut, elapsedSeconds) {
+function updateQuestionPerformance(question, isCorrect, timedOut, elapsedSeconds, selectedIndex = -1) {
   const questionId = normalizeSpace(question?.id);
   if (!questionId) {
     return;
@@ -2600,11 +2831,14 @@ function updateQuestionPerformance(question, isCorrect, timedOut, elapsedSeconds
       questionId,
       questionText: normalizeSpace(question?.question),
       category: normalizeSpace(question?.category) || "ללא קטגוריה",
+      correctAnswerIndex: Number.isInteger(Number(question?.answer)) ? Number(question.answer) : -1,
       total: 0,
       correct: 0,
       wrong: 0,
       timeouts: 0,
       totalAnswerSec: 0,
+      optionCount: Array.isArray(question?.options) ? question.options.length : 0,
+      selectedOptionCounts: {},
     };
   }
 
@@ -2619,6 +2853,17 @@ function updateQuestionPerformance(question, isCorrect, timedOut, elapsedSeconds
   if (timedOut) {
     stat.timeouts += 1;
   }
+
+  if (!stat.selectedOptionCounts || typeof stat.selectedOptionCounts !== "object") {
+    stat.selectedOptionCounts = {};
+  }
+  if (timedOut || selectedIndex < 0) {
+    stat.selectedOptionCounts.timeout = Number(stat.selectedOptionCounts.timeout || 0) + 1;
+    return;
+  }
+
+  const selectedKey = `opt_${selectedIndex}`;
+  stat.selectedOptionCounts[selectedKey] = Number(stat.selectedOptionCounts[selectedKey] || 0) + 1;
 }
 
 function renderAnswerFeedbackDetails(payload) {
@@ -2705,13 +2950,65 @@ function getOptionExplanations(question) {
   return ensureOptionExplanations(question);
 }
 
+function splitMeaningfulWords(text) {
+  return normalizeSpace(text)
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(" ")
+    .map((word) => normalizeSpace(word))
+    .filter((word) => word.length >= 3);
+}
+
+function buildDistractorLibraryReason(question, optionText) {
+  const category = normalizeSpace(question?.category);
+  const pools = [
+    ...(DISTRACTOR_FEEDBACK_LIBRARY[category] || []),
+    ...(DISTRACTOR_FEEDBACK_LIBRARY.default || []),
+  ];
+  for (let i = 0; i < pools.length; i += 1) {
+    const rule = pools[i];
+    if (!rule?.pattern || !(rule.pattern instanceof RegExp)) {
+      continue;
+    }
+    if (rule.pattern.test(optionText)) {
+      return rule.reason;
+    }
+  }
+  return "";
+}
+
+function buildDistractorContrastReason(optionText, correctText) {
+  const optionWords = splitMeaningfulWords(optionText);
+  const correctWords = new Set(splitMeaningfulWords(correctText));
+  if (!optionWords.length || !correctWords.size) {
+    return "";
+  }
+  const overlap = optionWords.filter((word) => correctWords.has(word));
+  if (overlap.length >= 2) {
+    return "האפשרות נשמעת קרובה לנכון, אבל משנה רכיב מרכזי ולכן מובילה למסקנה שגויה.";
+  }
+  if (overlap.length === 0) {
+    return "המילים המרכזיות באפשרות לא תואמות למסר העיקרי של השאלה.";
+  }
+  return "";
+}
+
 function buildFallbackWrongReason(question, index) {
   const correct = String(question?.options?.[question.answer] || "").trim();
   const option = String(question?.options?.[index] || "").trim();
   const explanation = clampText(String(question?.explanation || "").trim(), 150);
+  const libraryReason = buildDistractorLibraryReason(question, option);
+  const contrastReason = buildDistractorContrastReason(option, correct);
 
   if (option && correct) {
-    return `האפשרות הזו לא תואמת למידע במקור. המסקנה הנכונה היא "${correct}". ${explanation}`;
+    const parts = [
+      libraryReason,
+      contrastReason,
+      `המסקנה הנכונה היא "${correct}".`,
+      explanation,
+    ]
+      .map((item) => normalizeSpace(item))
+      .filter(Boolean);
+    return parts.join(" ");
   }
 
   return `האפשרות הזו לא נתמכת במידע המתואר. ${explanation}`;
@@ -3442,6 +3739,168 @@ function buildAdaptiveScoresForPool(questionPool, profile) {
   return output;
 }
 
+function readPlayerSpacedMemoryRecords(playerName) {
+  const playerKey = normalizePlayerKey(playerName);
+  if (!playerKey) {
+    return {};
+  }
+  const store = readObjectStorage(STORAGE_KEYS.playerSpacedMemory, {});
+  const records = store[playerKey];
+  return records && typeof records === "object" ? records : {};
+}
+
+function writePlayerSpacedMemoryRecords(playerName, records) {
+  const playerKey = normalizePlayerKey(playerName);
+  if (!playerKey) {
+    return false;
+  }
+  const store = readObjectStorage(STORAGE_KEYS.playerSpacedMemory, {});
+  store[playerKey] = records && typeof records === "object" ? records : {};
+  return writeStorage(STORAGE_KEYS.playerSpacedMemory, store);
+}
+
+function scoreSpacedReviewQuality(payload) {
+  const isCorrect = Boolean(payload?.isCorrect);
+  const timedOut = Boolean(payload?.timedOut);
+  const elapsedSeconds = Number(payload?.elapsedSeconds || 0);
+  if (timedOut) {
+    return 0;
+  }
+  if (!isCorrect) {
+    return 2;
+  }
+  if (elapsedSeconds <= 6) {
+    return 5;
+  }
+  if (elapsedSeconds <= 14) {
+    return 4;
+  }
+  return 3;
+}
+
+function updatePlayerSpacedMemory(playerName, question, payload = {}) {
+  const playerKey = normalizePlayerKey(playerName);
+  const familyKey = getQuestionFamilyKey(question);
+  if (!playerKey || !familyKey) {
+    return;
+  }
+
+  const nowTs = Date.now();
+  const nowIso = new Date(nowTs).toISOString();
+  const records = readPlayerSpacedMemoryRecords(playerKey);
+  const current = records[familyKey] && typeof records[familyKey] === "object"
+    ? records[familyKey]
+    : {
+      repetition: 0,
+      intervalDays: 0,
+      easiness: 2.5,
+      dueAt: nowIso,
+      successStreak: 0,
+      lapses: 0,
+      totalReviews: 0,
+      avgElapsedSec: 0,
+      lastQuality: 0,
+      lastReviewedAt: nowIso,
+    };
+
+  const quality = scoreSpacedReviewQuality(payload);
+  const prevIntervalDays = Math.max(0, Number(current.intervalDays || 0));
+  const prevEasiness = Math.max(1.3, Number(current.easiness || 2.5));
+  const prevRepetition = Math.max(0, Number(current.repetition || 0));
+  const totalReviews = Number(current.totalReviews || 0) + 1;
+  const elapsedSeconds = Math.max(0, Number(payload?.elapsedSeconds || 0));
+  const nextAvgElapsedSec = Number(
+    ((Number(current.avgElapsedSec || 0) * (totalReviews - 1) + elapsedSeconds) / totalReviews).toFixed(2),
+  );
+
+  let nextRepetition = 0;
+  let nextIntervalDays = 1;
+  let nextSuccessStreak = 0;
+  let nextLapses = Number(current.lapses || 0);
+
+  if (quality >= 3) {
+    nextRepetition = prevRepetition + 1;
+    nextSuccessStreak = Number(current.successStreak || 0) + 1;
+    if (nextRepetition === 1) {
+      nextIntervalDays = 1;
+    } else if (nextRepetition === 2) {
+      nextIntervalDays = 3;
+    } else {
+      nextIntervalDays = Math.min(90, Math.max(4, Math.round(prevIntervalDays * prevEasiness)));
+    }
+  } else {
+    nextRepetition = 0;
+    nextSuccessStreak = 0;
+    nextIntervalDays = 1;
+    nextLapses += 1;
+  }
+
+  const easinessDelta = 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02);
+  const nextEasiness = Math.max(1.3, Number((prevEasiness + easinessDelta).toFixed(4)));
+  const dueAtTs = nowTs + nextIntervalDays * 24 * 60 * 60 * 1000;
+
+  records[familyKey] = {
+    repetition: nextRepetition,
+    intervalDays: nextIntervalDays,
+    easiness: nextEasiness,
+    dueAt: new Date(dueAtTs).toISOString(),
+    successStreak: nextSuccessStreak,
+    lapses: nextLapses,
+    totalReviews,
+    avgElapsedSec: nextAvgElapsedSec,
+    lastQuality: quality,
+    lastReviewedAt: nowIso,
+  };
+
+  writePlayerSpacedMemoryRecords(playerKey, records);
+}
+
+function buildSpacedRepetitionScoresForPool(playerName, questionPool) {
+  const output = new Map();
+  const playerRecords = readPlayerSpacedMemoryRecords(playerName);
+  const nowTs = Date.now();
+
+  (questionPool || []).forEach((question) => {
+    const questionId = normalizeSpace(question?.id);
+    if (!questionId) {
+      return;
+    }
+    const familyKey = getQuestionFamilyKey(question);
+    const memory = playerRecords[familyKey];
+    if (!memory || typeof memory !== "object") {
+      output.set(questionId, 1);
+      return;
+    }
+
+    const dueAtTs = Date.parse(memory.dueAt || "");
+    if (!Number.isFinite(dueAtTs)) {
+      output.set(questionId, 1);
+      return;
+    }
+
+    const diffMs = dueAtTs - nowTs;
+    let score = 1;
+    if (diffMs <= 0) {
+      const overdueDays = Math.max(0, Math.abs(diffMs) / (24 * 60 * 60 * 1000));
+      score += SPACED_REPETITION_SETTINGS.minDueBoost + overdueDays * SPACED_REPETITION_SETTINGS.overdueBoostPerDay;
+    } else {
+      const diffDays = diffMs / (24 * 60 * 60 * 1000);
+      if (diffDays <= SPACED_REPETITION_SETTINGS.dueSoonWindowDays) {
+        score += SPACED_REPETITION_SETTINGS.dueSoonBoost
+          * (1 - diffDays / SPACED_REPETITION_SETTINGS.dueSoonWindowDays);
+      } else {
+        score -= 0.08;
+      }
+    }
+
+    const lapsesBoost = Math.min(0.45, Number(memory.lapses || 0) * 0.06);
+    score += lapsesBoost;
+    output.set(questionId, Number(Math.max(0.85, score).toFixed(4)));
+  });
+
+  return output;
+}
+
 function buildPlayerAdaptiveSelectionOptions(playerName, questionPool) {
   const playerKey = normalizePlayerKey(playerName);
   if (!playerKey || !Array.isArray(questionPool) || !questionPool.length) {
@@ -3458,23 +3917,46 @@ function buildPlayerAdaptiveSelectionOptions(playerName, questionPool) {
 
   const profile = buildPlayerAdaptiveProfile(playerAttempts);
   const adaptiveScores = buildAdaptiveScoresForPool(questionPool, profile);
-  const signalCount = Array.from(adaptiveScores.values()).filter(
+  const spacedScores = buildSpacedRepetitionScoresForPool(playerName, questionPool);
+  const combinedScores = new Map();
+  questionPool.forEach((question) => {
+    const questionId = normalizeSpace(question?.id);
+    if (!questionId) {
+      return;
+    }
+    const adaptive = Number(adaptiveScores.get(questionId) || 1);
+    const spaced = Number(spacedScores.get(questionId) || 1);
+    const combined = adaptive + Math.max(0, spaced - 1) * 1.25;
+    combinedScores.set(questionId, Number(combined.toFixed(4)));
+  });
+
+  const adaptiveSignalCount = Array.from(adaptiveScores.values()).filter(
     (score) => Number(score) >= ADAPTIVE_SCORE_MIN_SIGNAL,
   ).length;
-  if (!signalCount) {
+  const spacedSignalCount = Array.from(spacedScores.values()).filter(
+    (score) => Number(score) > 1.1,
+  ).length;
+  const signalCount = Array.from(combinedScores.values()).filter(
+    (score) => Number(score) >= ADAPTIVE_SCORE_MIN_SIGNAL,
+  ).length;
+  if (!signalCount && !spacedSignalCount) {
     return { strategy: "random" };
   }
 
   const confidence = Math.min(
     100,
-    Math.round((signalCount / Math.max(1, questionPool.length)) * 70 + Math.min(30, playerAttempts.length * 5)),
+    Math.round(
+      (signalCount / Math.max(1, questionPool.length)) * 60
+      + Math.min(20, playerAttempts.length * 4)
+      + Math.min(20, spacedSignalCount * 2),
+    ),
   );
 
   return {
     strategy: "adaptive",
-    adaptiveScores,
+    adaptiveScores: combinedScores,
     confidence,
-    matchedSignals: signalCount,
+    matchedSignals: signalCount + spacedSignalCount + adaptiveSignalCount,
   };
 }
 
@@ -4755,6 +5237,61 @@ function renderLearningMetrics() {
   }
 }
 
+function calculateEntropyScore(counts) {
+  const safeCounts = (counts || []).map((value) => Math.max(0, Number(value) || 0)).filter((value) => value > 0);
+  const total = safeCounts.reduce((sum, value) => sum + value, 0);
+  if (!total || safeCounts.length <= 1) {
+    return 0;
+  }
+  const entropy = safeCounts.reduce((sum, value) => {
+    const probability = value / total;
+    return sum - probability * Math.log2(probability);
+  }, 0);
+  const maxEntropy = Math.log2(safeCounts.length);
+  if (!maxEntropy) {
+    return 0;
+  }
+  return Math.max(0, Math.min(1, entropy / maxEntropy));
+}
+
+function detectQuestionIssueCause(row) {
+  if (!row || row.total < AMBIGUOUS_QUESTION_MIN_SAMPLE) {
+    return "insufficient";
+  }
+  if (row.timeoutRate >= 36 || row.avgSec >= 21) {
+    return "phrasing";
+  }
+  if (row.ambiguousSignal) {
+    return "ambiguous";
+  }
+  if (row.failRate >= 52 && row.timeoutRate < 22) {
+    return "knowledge";
+  }
+  if (row.failRate >= 40) {
+    return "mixed";
+  }
+  return "stable";
+}
+
+function getQuestionIssueCauseLabel(cause) {
+  if (cause === "phrasing") {
+    return "ניסוח/עומס קריאה";
+  }
+  if (cause === "knowledge") {
+    return "פער ידע";
+  }
+  if (cause === "ambiguous") {
+    return "שאלה עמומה";
+  }
+  if (cause === "mixed") {
+    return "מעורב (ניסוח + ידע)";
+  }
+  if (cause === "insufficient") {
+    return "מדגם לא מספיק";
+  }
+  return "יציב";
+}
+
 function buildQuestionLearningRows(attemptsInput) {
   const attempts = Array.isArray(attemptsInput) ? attemptsInput : readStorage(STORAGE_KEYS.attempts, []);
   const summary = new Map();
@@ -4783,6 +5320,17 @@ function buildQuestionLearningRows(attemptsInput) {
           id: safeId,
           question: normalizeSpace(item?.questionText || fallbackQuestion?.question) || "שאלה ללא טקסט",
           category: normalizeSpace(item?.category || fallbackQuestion?.category) || "ללא קטגוריה",
+          correctAnswerIndex: Number.isInteger(Number(item?.correctAnswerIndex))
+            ? Number(item?.correctAnswerIndex)
+            : Number.isInteger(Number(fallbackQuestion?.answer))
+              ? Number(fallbackQuestion.answer)
+              : -1,
+          optionCount: Math.max(
+            0,
+            Number(item?.optionCount || 0),
+            Array.isArray(fallbackQuestion?.options) ? fallbackQuestion.options.length : 0,
+          ),
+          selectedOptionCounts: {},
           total: 0,
           correct: 0,
           wrong: 0,
@@ -4803,6 +5351,26 @@ function buildQuestionLearningRows(attemptsInput) {
       current.wrong += wrong;
       current.timeouts += timeouts;
       current.totalAnswerSec += totalAnswerSec;
+      if (
+        current.correctAnswerIndex < 0
+        && Number.isInteger(Number(item?.correctAnswerIndex))
+      ) {
+        current.correctAnswerIndex = Number(item.correctAnswerIndex);
+      }
+      current.optionCount = Math.max(current.optionCount, Number(item?.optionCount || 0));
+      if (!current.selectedOptionCounts || typeof current.selectedOptionCounts !== "object") {
+        current.selectedOptionCounts = {};
+      }
+      if (item?.selectedOptionCounts && typeof item.selectedOptionCounts === "object") {
+        Object.entries(item.selectedOptionCounts).forEach(([key, value]) => {
+          const safeKey = normalizeSpace(key);
+          if (!safeKey) {
+            return;
+          }
+          current.selectedOptionCounts[safeKey] = Number(current.selectedOptionCounts[safeKey] || 0)
+            + Math.max(0, Number(value || 0));
+        });
+      }
     });
   });
 
@@ -4813,6 +5381,34 @@ function buildQuestionLearningRows(attemptsInput) {
       const accuracy = row.total ? Math.round((row.correct / row.total) * 100) : 0;
       const avgSec = row.total ? Number((row.totalAnswerSec / row.total).toFixed(1)) : 0;
       const riskScore = Math.round(failRate * 0.7 + timeoutRate * 0.3);
+      const optionEntries = Object.entries(row.selectedOptionCounts || {})
+        .filter(([key]) => key.startsWith("opt_"));
+      const wrongOptionCounts = optionEntries
+        .filter(([key]) => Number(key.replace("opt_", "")) !== row.correctAnswerIndex)
+        .map(([, value]) => Math.max(0, Number(value || 0)));
+      const totalWrongSelections = wrongOptionCounts.reduce((sum, value) => sum + value, 0);
+      const dominantWrongRate = totalWrongSelections
+        ? Math.round((Math.max(...wrongOptionCounts, 0) / totalWrongSelections) * 100)
+        : 0;
+      const wrongSelectionEntropy = calculateEntropyScore(wrongOptionCounts);
+      const ambiguityScore = row.total >= AMBIGUOUS_QUESTION_MIN_SAMPLE
+        ? Math.round(
+          wrongSelectionEntropy * 50
+          + (100 - Math.abs(50 - failRate) * 2) * 0.24
+          + timeoutRate * 0.18
+          + (dominantWrongRate < 45 ? 14 : 0),
+        )
+        : 0;
+      const ambiguousSignal = row.total >= AMBIGUOUS_QUESTION_MIN_SAMPLE
+        && failRate >= 35
+        && ambiguityScore >= 58;
+      const issueCause = detectQuestionIssueCause({
+        ...row,
+        failRate,
+        timeoutRate,
+        avgSec,
+        ambiguousSignal,
+      });
 
       return {
         ...row,
@@ -4821,6 +5417,11 @@ function buildQuestionLearningRows(attemptsInput) {
         accuracy,
         avgSec,
         riskScore,
+        dominantWrongRate,
+        wrongSelectionEntropy,
+        ambiguityScore,
+        ambiguousSignal,
+        issueCause,
       };
     })
     .filter((row) => row.total > 0)
@@ -4869,13 +5470,24 @@ function renderQuestionDifficultyList(questionRows, alertSettingsInput = null) {
     sampleBadge.className = "badge";
     sampleBadge.textContent = `מדגם: ${row.total}`;
 
+    const causeBadge = document.createElement("span");
+    causeBadge.className = "badge";
+    causeBadge.textContent = `סיבת נפילות: ${getQuestionIssueCauseLabel(row.issueCause)}`;
+
     badgeRow.appendChild(riskBadge);
     badgeRow.appendChild(categoryBadge);
     badgeRow.appendChild(sampleBadge);
+    badgeRow.appendChild(causeBadge);
 
     const statLine = document.createElement("p");
     statLine.textContent =
       `נפילות: ${row.failRate}% | פקיעות זמן: ${row.timeoutRate}% | דיוק: ${row.accuracy}% | זמן מענה ממוצע: ${row.avgSec} ש׳`;
+
+    const insightLine = document.createElement("p");
+    insightLine.className = "muted tight";
+    insightLine.textContent = row.ambiguousSignal
+      ? `עמימות מזוהה: גבוהה (${row.ambiguityScore}/100) | פיזור בחירות שגויות: ${Math.round(row.wrongSelectionEntropy * 100)}%`
+      : `אינדיקציית עמימות: ${row.ambiguityScore}/100 | בחירה שגויה דומיננטית: ${row.dominantWrongRate}%`;
 
     const actions = document.createElement("div");
     actions.className = "inline-actions";
@@ -4894,6 +5506,7 @@ function renderQuestionDifficultyList(questionRows, alertSettingsInput = null) {
     card.appendChild(title);
     card.appendChild(badgeRow);
     card.appendChild(statLine);
+    card.appendChild(insightLine);
     card.appendChild(actions);
     dom.questionDifficultyList.appendChild(card);
   });
@@ -4910,6 +5523,12 @@ function buildCategoryAlertRecommendation(row, settings) {
 }
 
 function buildQuestionAlertRecommendation(row, settings) {
+  if (row.issueCause === "ambiguous") {
+    return "סמן את השאלה כעמומה, ערוך ניסוח ושפר מסיחים כדי לייצר הבדל חד יותר בין תשובות.";
+  }
+  if (row.issueCause === "phrasing") {
+    return "פשט את הניסוח, קצר אפשרויות ושקול להוסיף מונחי מפתח בכרטיס הלמידה לפני השאלה.";
+  }
   if (row.failRate >= settings.questionFailHigh) {
     return `ערוך את השאלה במאגר, החלף לפחות שני מסיחים חלשים והדגש את ההסבר הנכון.`;
   }
@@ -4950,14 +5569,18 @@ function buildSmartLearningAlerts(categoryRows, questionRows, attemptCount, sett
   (questionRows || [])
     .filter((row) =>
       row.total >= Math.max(3, settings.minAttemptsForAlerts - 1)
-      && (row.failRate >= settings.questionFailWarn || row.timeoutRate >= settings.questionTimeoutWarn))
+      && (
+        row.failRate >= settings.questionFailWarn
+        || row.timeoutRate >= settings.questionTimeoutWarn
+        || row.ambiguousSignal
+      ))
     .slice(0, 5)
     .forEach((row) => {
       alerts.push({
         key: `q_${row.id}`,
-        level: row.failRate >= settings.questionFailHigh ? "high" : "warn",
+        level: row.ambiguousSignal || row.failRate >= settings.questionFailHigh ? "high" : "warn",
         title: "התראת שאלה",
-        text: `"${clampText(row.question, 78)}" | נפילות ${row.failRate}% | פקיעות ${row.timeoutRate}% | מדגם ${row.total}.`,
+        text: `"${clampText(row.question, 78)}" | נפילות ${row.failRate}% | פקיעות ${row.timeoutRate}% | סיבה משוערת: ${getQuestionIssueCauseLabel(row.issueCause)} | מדגם ${row.total}.`,
         recommendation: buildQuestionAlertRecommendation(row, settings),
       });
     });
@@ -5004,7 +5627,16 @@ function renderLearningRecommendationsPanel(categoryRows, questionRows, attemptC
     .slice(0, 4);
   hardQuestions.forEach((row) => {
     recommendations.push(
-      `השאלה "${clampText(row.question, 90)}" מכשילה (${row.failRate}% נפילות). מומלץ לשפר ניסוח והסבר ולבדוק את המסיחים.`,
+      `השאלה "${clampText(row.question, 90)}" מכשילה (${row.failRate}% נפילות, ${getQuestionIssueCauseLabel(row.issueCause)}). מומלץ לשפר ניסוח והסבר ולבדוק את המסיחים.`,
+    );
+  });
+
+  const ambiguousQuestions = (questionRows || [])
+    .filter((row) => row.total >= AMBIGUOUS_QUESTION_MIN_SAMPLE && row.ambiguousSignal)
+    .slice(0, 3);
+  ambiguousQuestions.forEach((row) => {
+    recommendations.push(
+      `השאלה "${clampText(row.question, 88)}" מזוהה כעמומה (${row.ambiguityScore}/100). מומלץ לחדד ניסוח ולהבדיל חד-משמעית בין המסיחים.`,
     );
   });
 
@@ -5105,6 +5737,30 @@ async function handleActivitySubmit(event) {
   const outcome = String(formData.get("outcome") || "").trim();
   const sourceLabel = String(formData.get("sourceLabel") || "").trim();
   const sourceUrl = String(formData.get("sourceUrl") || "").trim();
+  const antiSpamPayloadHash = String(
+    hashText(
+      [title, date, category, kind, context, outcome, sourceLabel, sourceUrl]
+        .map((item) => normalizeSpace(item))
+        .join("|"),
+    ),
+  );
+  const antiSpam = recordAntiSpamEvent("activitySubmit", antiSpamPayloadHash);
+  if (antiSpam.blocked) {
+    showMessage(
+      dom.activityFormMsg,
+      `יותר מדי שליחות בזמן קצר. נסה שוב בעוד ${formatCooldownMs(antiSpam.remainingMs)}.`,
+      false,
+    );
+    return;
+  }
+  if (antiSpam.duplicate) {
+    showMessage(
+      dom.activityFormMsg,
+      "זוהתה שליחה כפולה של אותו תוכן בזמן קצר. עדכן נתונים או המתן כמה שניות.",
+      false,
+    );
+    return;
+  }
 
   if (!title || !date || !category || !context || !outcome) {
     showMessage(dom.activityFormMsg, "יש למלא את כל השדות החיוניים לפני שמירה.", false);
@@ -6054,11 +6710,83 @@ function summarizeAuditIssueLevel(issues) {
   return issues.some((issue) => issue.level === "high") ? "high" : "medium";
 }
 
-function auditSingleQuestionDetailed(question) {
+function normalizeQuestionForSemanticComparison(text) {
+  return splitMeaningfulWords(text).map((word) => word.toLowerCase());
+}
+
+function calculateSemanticQuestionSimilarity(questionA, questionB) {
+  const tokensA = new Set(normalizeQuestionForSemanticComparison(questionA));
+  const tokensB = new Set(normalizeQuestionForSemanticComparison(questionB));
+  if (!tokensA.size || !tokensB.size) {
+    return 0;
+  }
+  let intersection = 0;
+  tokensA.forEach((token) => {
+    if (tokensB.has(token)) {
+      intersection += 1;
+    }
+  });
+  const union = new Set([...tokensA, ...tokensB]).size;
+  if (!union) {
+    return 0;
+  }
+  return intersection / union;
+}
+
+function buildSemanticDuplicateMap(questions) {
+  const rows = Array.isArray(questions) ? questions : [];
+  const duplicateMap = new Map();
+  for (let i = 0; i < rows.length; i += 1) {
+    for (let j = i + 1; j < rows.length; j += 1) {
+      const left = rows[i];
+      const right = rows[j];
+      const leftId = normalizeSpace(left?.id);
+      const rightId = normalizeSpace(right?.id);
+      if (!leftId || !rightId) {
+        continue;
+      }
+      const similarity = calculateSemanticQuestionSimilarity(left?.question, right?.question);
+      if (similarity < SEMANTIC_DUPLICATE_MIN_SIMILARITY) {
+        continue;
+      }
+
+      if (!duplicateMap.has(leftId)) {
+        duplicateMap.set(leftId, []);
+      }
+      if (!duplicateMap.has(rightId)) {
+        duplicateMap.set(rightId, []);
+      }
+
+      duplicateMap.get(leftId).push({
+        id: rightId,
+        question: normalizeSpace(right?.question),
+        similarity,
+      });
+      duplicateMap.get(rightId).push({
+        id: leftId,
+        question: normalizeSpace(left?.question),
+        similarity,
+      });
+    }
+  }
+
+  duplicateMap.forEach((matches, key) => {
+    const sorted = matches
+      .slice()
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, 3);
+    duplicateMap.set(key, sorted);
+  });
+
+  return duplicateMap;
+}
+
+function auditSingleQuestionDetailed(question, auditContext = {}) {
   const safeQuestion = question || {};
   const questionText = normalizeSpace(safeQuestion.question);
   const explanationText = normalizeSpace(safeQuestion.explanation);
   const options = sanitizeOptionsList(safeQuestion.options);
+  const questionId = normalizeSpace(safeQuestion.id) || "unknown";
   const answerIndex = resolveAnswerIndex(
     safeQuestion.answer,
     options,
@@ -6096,6 +6824,17 @@ function auditSingleQuestionDetailed(question) {
   if (!hasAnySource) {
     issues.push({ level: "high", message: "אין מקור תקין לשאלה" });
   } else {
+    const brokenSources = normalizedSources.filter((source) =>
+      isLikelyBrokenMqgSourceUrl(source?.url));
+    if (brokenSources.length) {
+      const firstBroken = brokenSources[0];
+      const suggestionUrl = buildInternalSourceSearchHref(firstBroken, safeQuestion);
+      issues.push({
+        level: "high",
+        message: `זוהה מקור פגום או שבור. מומלץ להחליף לקישור ישיר או להשתמש במקור חלופי: ${suggestionUrl}`,
+      });
+    }
+
     const hasPreciseSource = normalizedSources.some((source) => {
       const registry = getSourceRegistryEntry(source, safeQuestion);
       if (normalizeSpace(registry?.canonicalUrl)) {
@@ -6136,8 +6875,20 @@ function auditSingleQuestionDetailed(question) {
     issues.push({ level: "medium", message: "אפשרויות מספריות בלבד - מומלץ להוסיף הקשר טקסטואלי" });
   }
 
+  if (auditContext?.semanticDuplicateMap instanceof Map) {
+    const duplicates = auditContext.semanticDuplicateMap.get(questionId) || [];
+    if (duplicates.length) {
+      const top = duplicates[0];
+      const severity = top.similarity >= 0.88 ? "high" : "medium";
+      issues.push({
+        level: severity,
+        message: `כפילויות סמנטיות: דומה לשאלה ${top.id} (${Math.round(top.similarity * 100)}%). מומלץ לאחד או לחדד ניסוח.`,
+      });
+    }
+  }
+
   return {
-    id: normalizeSpace(safeQuestion.id) || "unknown",
+    id: questionId,
     issues,
   };
 }
@@ -6209,12 +6960,13 @@ function buildQuestionAuditFingerprint(inventory) {
 
 function buildQuestionBankAuditReport(inventory) {
   const safeInventory = inventory || getQuestionInventory();
+  const semanticDuplicateMap = buildSemanticDuplicateMap(safeInventory.allQuestions);
   const findings = [];
   let highIssueCount = 0;
   let mediumIssueCount = 0;
 
   safeInventory.allQuestions.forEach((question) => {
-    const detailed = auditSingleQuestionDetailed(question);
+    const detailed = auditSingleQuestionDetailed(question, { semanticDuplicateMap });
     if (!detailed.issues.length) {
       return;
     }
@@ -7466,6 +8218,35 @@ function generateDraftsFromLongTextInput(options = {}) {
   hideMessage(dom.longTextMsg);
 
   const normalizedText = normalizeLongTextInput(dom.longTextInput.value);
+  const antiSpamPayloadHash = String(
+    hashText(
+      [
+        normalizedText,
+        normalizeSpace(dom.longTextDate?.value),
+        normalizeSpace(dom.longTextCategory?.value),
+        normalizeSpace(dom.longTextKind?.value),
+        normalizeSpace(dom.longTextQuestionCount?.value),
+      ].join("|"),
+    ),
+  );
+  const antiSpam = recordAntiSpamEvent("longTextGenerate", antiSpamPayloadHash);
+  if (antiSpam.blocked) {
+    showMessage(
+      dom.longTextMsg,
+      `יותר מדי ניסיונות יצירה בזמן קצר. נסה שוב בעוד ${formatCooldownMs(antiSpam.remainingMs)}.`,
+      false,
+    );
+    return;
+  }
+  if (antiSpam.duplicate) {
+    showMessage(
+      dom.longTextMsg,
+      "זוהתה בקשת יצירה כפולה לאותו טקסט. המתן כמה שניות או בצע שינוי קטן בטקסט.",
+      false,
+    );
+    return;
+  }
+
   if (!adminState.longTextAnalysis || adminState.longTextAnalysis.normalizedText !== normalizedText) {
     showMessage(dom.longTextMsg, "יש לבצע ניתוח לטקסט (Enter או כפתור הניתוח) לפני יצירת שאלות.", false);
     return;
@@ -8148,6 +8929,7 @@ function renderSources(container, sources, question) {
     const link = document.createElement("a");
     const preferredHref = buildPreferredSourceHref(source, question);
     const directHref = buildDirectSourceHref(source, question);
+    const brokenSource = isLikelyBrokenMqgSourceUrl(source?.url);
 
     link.href = preferredHref;
     link.target = "_blank";
@@ -8175,6 +8957,21 @@ function renderSources(container, sources, question) {
       directLink.textContent = "קישור ישיר";
       li.appendChild(document.createTextNode(" · "));
       li.appendChild(directLink);
+    }
+
+    if (brokenSource) {
+      const warnText = document.createElement("span");
+      warnText.className = "muted tight";
+      warnText.textContent = " · זוהה מקור פגום";
+      li.appendChild(warnText);
+
+      const altLink = document.createElement("a");
+      altLink.href = buildInternalSourceSearchHref(source, question);
+      altLink.target = "_blank";
+      altLink.rel = "noopener noreferrer";
+      altLink.textContent = "מקור חלופי מומלץ";
+      li.appendChild(document.createTextNode(" · "));
+      li.appendChild(altLink);
     }
 
     container.appendChild(li);
