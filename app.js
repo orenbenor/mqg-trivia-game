@@ -36,6 +36,7 @@ const STORAGE_KEYS = {
   questionCycleByScope: "mqg_question_cycle_scope_used_ids_v1",
   familyCycleByScope: "mqg_family_cycle_scope_used_ids_v1",
   adminUsers: "mqg_admin_users_v1",
+  learningAlertSettings: "mqg_learning_alert_settings_v1",
 };
 const REMOTE_SYNCABLE_KEYS = [
   STORAGE_KEYS.attempts,
@@ -48,6 +49,7 @@ const REMOTE_SYNCABLE_KEYS = [
   STORAGE_KEYS.familyCycleUsedIds,
   STORAGE_KEYS.questionCycleByScope,
   STORAGE_KEYS.familyCycleByScope,
+  STORAGE_KEYS.learningAlertSettings,
 ];
 const BACKEND_DEFAULT_CONFIG = {
   enabled: false,
@@ -55,6 +57,15 @@ const BACKEND_DEFAULT_CONFIG = {
   syncIntervalMs: 15000,
   publicWriteKey: "",
   allowInsecureLocalFallback: false,
+};
+const LEARNING_ALERT_SETTINGS_DEFAULT = {
+  minAttemptsForAlerts: 4,
+  categoryAccuracyWarn: 58,
+  categoryAccuracyHigh: 52,
+  categoryTimeoutWarn: 28,
+  questionFailWarn: 50,
+  questionFailHigh: 60,
+  questionTimeoutWarn: 32,
 };
 
 const CATEGORY_COLORS = {
@@ -1382,6 +1393,16 @@ const dom = {
   learningAlertsList: document.getElementById("learningAlertsList"),
   questionDifficultyList: document.getElementById("questionDifficultyList"),
   learningRecommendationsList: document.getElementById("learningRecommendationsList"),
+  learningAlertMinAttempts: document.getElementById("learningAlertMinAttempts"),
+  learningAlertCategoryWarn: document.getElementById("learningAlertCategoryWarn"),
+  learningAlertCategoryHigh: document.getElementById("learningAlertCategoryHigh"),
+  learningAlertCategoryTimeoutWarn: document.getElementById("learningAlertCategoryTimeoutWarn"),
+  learningAlertQuestionFailWarn: document.getElementById("learningAlertQuestionFailWarn"),
+  learningAlertQuestionFailHigh: document.getElementById("learningAlertQuestionFailHigh"),
+  learningAlertQuestionTimeoutWarn: document.getElementById("learningAlertQuestionTimeoutWarn"),
+  saveLearningAlertSettingsBtn: document.getElementById("saveLearningAlertSettingsBtn"),
+  resetLearningAlertSettingsBtn: document.getElementById("resetLearningAlertSettingsBtn"),
+  learningAlertSettingsMsg: document.getElementById("learningAlertSettingsMsg"),
   questionEditModal: document.getElementById("questionEditModal"),
   questionEditForm: document.getElementById("questionEditForm"),
   questionEditQuestionInput: document.getElementById("questionEditQuestionInput"),
@@ -1677,6 +1698,8 @@ function bindEvents() {
 
   dom.exportAttemptsCsvBtn?.addEventListener("click", exportAttemptsCsv);
   dom.exportHardestCsvBtn?.addEventListener("click", exportHardestQuestionsCsv);
+  dom.saveLearningAlertSettingsBtn?.addEventListener("click", saveLearningAlertSettingsFromForm);
+  dom.resetLearningAlertSettingsBtn?.addEventListener("click", resetLearningAlertSettingsToDefault);
 
   dom.activityForm.addEventListener("submit", handleActivitySubmit);
   dom.adminUserForm.addEventListener("submit", handleAdminUserCreate);
@@ -4357,6 +4380,8 @@ function openAdminPanel() {
   }
   renderAdminStats();
   renderAttemptsTable();
+  renderLearningAlertSettingsForm();
+  hideMessage(dom.learningAlertSettingsMsg);
   renderLearningMetrics();
   renderActivities();
   renderDrafts();
@@ -4472,8 +4497,127 @@ function renderAttemptsTable() {
   });
 }
 
+function normalizeLearningAlertSettings(input) {
+  const raw = input && typeof input === "object" ? input : {};
+  const minAttemptsForAlerts = clampNumber(
+    Number(raw.minAttemptsForAlerts),
+    1,
+    50,
+  ) || LEARNING_ALERT_SETTINGS_DEFAULT.minAttemptsForAlerts;
+  const categoryAccuracyWarn = clampNumber(
+    Number(raw.categoryAccuracyWarn),
+    1,
+    100,
+  ) || LEARNING_ALERT_SETTINGS_DEFAULT.categoryAccuracyWarn;
+  const categoryAccuracyHigh = clampNumber(
+    Number(raw.categoryAccuracyHigh),
+    1,
+    categoryAccuracyWarn,
+  ) || Math.min(LEARNING_ALERT_SETTINGS_DEFAULT.categoryAccuracyHigh, categoryAccuracyWarn);
+  const categoryTimeoutWarn = clampNumber(
+    Number(raw.categoryTimeoutWarn),
+    0,
+    100,
+  );
+  const questionFailWarn = clampNumber(
+    Number(raw.questionFailWarn),
+    1,
+    100,
+  ) || LEARNING_ALERT_SETTINGS_DEFAULT.questionFailWarn;
+  const questionFailHigh = clampNumber(
+    Number(raw.questionFailHigh),
+    1,
+    questionFailWarn,
+  ) || Math.min(LEARNING_ALERT_SETTINGS_DEFAULT.questionFailHigh, questionFailWarn);
+  const questionTimeoutWarn = clampNumber(
+    Number(raw.questionTimeoutWarn),
+    0,
+    100,
+  );
+
+  return {
+    minAttemptsForAlerts,
+    categoryAccuracyWarn,
+    categoryAccuracyHigh,
+    categoryTimeoutWarn,
+    questionFailWarn,
+    questionFailHigh,
+    questionTimeoutWarn,
+  };
+}
+
+function readLearningAlertSettings() {
+  const saved = readObjectStorage(STORAGE_KEYS.learningAlertSettings, {});
+  const merged = {
+    ...LEARNING_ALERT_SETTINGS_DEFAULT,
+    ...(saved || {}),
+  };
+  return normalizeLearningAlertSettings(merged);
+}
+
+function renderLearningAlertSettingsForm() {
+  const settings = readLearningAlertSettings();
+  if (dom.learningAlertMinAttempts) {
+    dom.learningAlertMinAttempts.value = String(settings.minAttemptsForAlerts);
+  }
+  if (dom.learningAlertCategoryWarn) {
+    dom.learningAlertCategoryWarn.value = String(settings.categoryAccuracyWarn);
+  }
+  if (dom.learningAlertCategoryHigh) {
+    dom.learningAlertCategoryHigh.value = String(settings.categoryAccuracyHigh);
+  }
+  if (dom.learningAlertCategoryTimeoutWarn) {
+    dom.learningAlertCategoryTimeoutWarn.value = String(settings.categoryTimeoutWarn);
+  }
+  if (dom.learningAlertQuestionFailWarn) {
+    dom.learningAlertQuestionFailWarn.value = String(settings.questionFailWarn);
+  }
+  if (dom.learningAlertQuestionFailHigh) {
+    dom.learningAlertQuestionFailHigh.value = String(settings.questionFailHigh);
+  }
+  if (dom.learningAlertQuestionTimeoutWarn) {
+    dom.learningAlertQuestionTimeoutWarn.value = String(settings.questionTimeoutWarn);
+  }
+}
+
+function buildLearningAlertSettingsFromForm() {
+  return normalizeLearningAlertSettings({
+    minAttemptsForAlerts: dom.learningAlertMinAttempts?.value,
+    categoryAccuracyWarn: dom.learningAlertCategoryWarn?.value,
+    categoryAccuracyHigh: dom.learningAlertCategoryHigh?.value,
+    categoryTimeoutWarn: dom.learningAlertCategoryTimeoutWarn?.value,
+    questionFailWarn: dom.learningAlertQuestionFailWarn?.value,
+    questionFailHigh: dom.learningAlertQuestionFailHigh?.value,
+    questionTimeoutWarn: dom.learningAlertQuestionTimeoutWarn?.value,
+  });
+}
+
+function saveLearningAlertSettingsFromForm() {
+  const settings = buildLearningAlertSettingsFromForm();
+  const saved = writeStorage(STORAGE_KEYS.learningAlertSettings, settings);
+  if (!saved) {
+    showMessage(dom.learningAlertSettingsMsg, "שמירת הגדרות ההתראות נכשלה.", false);
+    return;
+  }
+  showMessage(dom.learningAlertSettingsMsg, "הגדרות ההתראות נשמרו בהצלחה.", true);
+  renderLearningAlertSettingsForm();
+  renderLearningMetrics();
+}
+
+function resetLearningAlertSettingsToDefault() {
+  const saved = writeStorage(STORAGE_KEYS.learningAlertSettings, { ...LEARNING_ALERT_SETTINGS_DEFAULT });
+  if (!saved) {
+    showMessage(dom.learningAlertSettingsMsg, "איפוס הגדרות ההתראות נכשל.", false);
+    return;
+  }
+  showMessage(dom.learningAlertSettingsMsg, "הגדרות ההתראות אופסו לברירת המחדל.", true);
+  renderLearningAlertSettingsForm();
+  renderLearningMetrics();
+}
+
 function renderLearningMetrics() {
   const attempts = readStorage(STORAGE_KEYS.attempts, []);
+  const alertSettings = readLearningAlertSettings();
   dom.learningMetricsList.innerHTML = "";
   if (dom.learningAlertsList) {
     dom.learningAlertsList.innerHTML = "";
@@ -4599,15 +4743,15 @@ function renderLearningMetrics() {
   }
 
   const questionRows = buildQuestionLearningRows(attempts);
-  const smartAlerts = buildSmartLearningAlerts(categoryRows, questionRows, attempts.length);
+  const smartAlerts = buildSmartLearningAlerts(categoryRows, questionRows, attempts.length, alertSettings);
   const alertCount = renderLearningAlertsPanel(smartAlerts);
-  renderQuestionDifficultyList(questionRows);
+  renderQuestionDifficultyList(questionRows, alertSettings);
   renderLearningRecommendationsPanel(categoryRows, questionRows, attempts.length, smartAlerts);
 
   if (dom.learningInsightsSummary) {
     const trackedQuestions = questionRows.filter((item) => item.total >= 2).length;
     dom.learningInsightsSummary.textContent =
-      `משחקים נותחו: ${attempts.length} | שאלות עם מדגם מספיק: ${trackedQuestions} | קטגוריות פעילות: ${categoryRows.length} | התראות פעילות: ${alertCount}`;
+      `משחקים נותחו: ${attempts.length} | שאלות עם מדגם מספיק: ${trackedQuestions} | קטגוריות פעילות: ${categoryRows.length} | התראות פעילות: ${alertCount} | סף התראה: ${alertSettings.questionFailWarn}%`;
   }
 }
 
@@ -4688,11 +4832,12 @@ function buildQuestionLearningRows(attemptsInput) {
     });
 }
 
-function renderQuestionDifficultyList(questionRows) {
+function renderQuestionDifficultyList(questionRows, alertSettingsInput = null) {
   if (!dom.questionDifficultyList) {
     return;
   }
 
+  const alertSettings = alertSettingsInput || readLearningAlertSettings();
   dom.questionDifficultyList.innerHTML = "";
   const actionable = (questionRows || []).filter((row) => row.total >= 2).slice(0, 10);
   if (!actionable.length) {
@@ -4713,7 +4858,7 @@ function renderQuestionDifficultyList(questionRows) {
     badgeRow.className = "badge-row";
 
     const riskBadge = document.createElement("span");
-    riskBadge.className = `badge ${row.failRate >= 55 ? "audit-level bad" : "audit-level warn"}`;
+    riskBadge.className = `badge ${row.failRate >= alertSettings.questionFailHigh ? "audit-level bad" : "audit-level warn"}`;
     riskBadge.textContent = `סיכון: ${row.riskScore}/100`;
 
     const categoryBadge = document.createElement("span");
@@ -4754,61 +4899,66 @@ function renderQuestionDifficultyList(questionRows) {
   });
 }
 
-function buildCategoryAlertRecommendation(row) {
-  if (row.accuracy <= 52) {
+function buildCategoryAlertRecommendation(row, settings) {
+  if (row.accuracy <= settings.categoryAccuracyHigh) {
     return `הוסף לפחות 4 שאלות חיזוק בקטגוריית "${row.category}" ועדכן ניסוח להסבר ברור יותר.`;
   }
-  if (row.timeoutRate >= 28) {
+  if (row.timeoutRate >= settings.categoryTimeoutWarn) {
     return `קצר נוסח שאלה ואפשרויות בקטגוריית "${row.category}" ובחן האם נדרש כרטיס למידה מקדים.`;
   }
   return `בצע רענון מסיחים והוסף 2-3 שאלות תרגול ממוקדות בקטגוריית "${row.category}".`;
 }
 
-function buildQuestionAlertRecommendation(row) {
-  if (row.failRate >= 60) {
+function buildQuestionAlertRecommendation(row, settings) {
+  if (row.failRate >= settings.questionFailHigh) {
     return `ערוך את השאלה במאגר, החלף לפחות שני מסיחים חלשים והדגש את ההסבר הנכון.`;
   }
-  if (row.timeoutRate >= 32) {
+  if (row.timeoutRate >= settings.questionTimeoutWarn) {
     return `קצר את נוסח השאלה או את אורכי התשובות כדי לצמצם פקיעות זמן.`;
   }
   return `בדוק בהירות ניסוח ועדכן את כרטיס הלמידה כך שהמסר המרכזי יופיע לפני השאלה.`;
 }
 
-function buildSmartLearningAlerts(categoryRows, questionRows, attemptCount) {
+function buildSmartLearningAlerts(categoryRows, questionRows, attemptCount, settingsInput = null) {
+  const settings = settingsInput || readLearningAlertSettings();
   const alerts = [];
-  if (attemptCount < 4) {
+  if (attemptCount < settings.minAttemptsForAlerts) {
     alerts.push({
       key: "sample_small",
       level: "warn",
       title: "מדגם קטן",
-      text: "מומלץ לצבור לפחות 4 משחקים כדי לקבל התרעות יציבות יותר.",
+      text: `מומלץ לצבור לפחות ${settings.minAttemptsForAlerts} משחקים כדי לקבל התרעות יציבות יותר.`,
       recommendation: "המשך איסוף נתונים לפני קבלת החלטות תוכן רחבות.",
     });
   }
 
   (categoryRows || [])
-    .filter((row) => row.total >= 4 && (row.accuracy <= 58 || row.timeoutRate >= 28))
+    .filter((row) =>
+      row.total >= settings.minAttemptsForAlerts
+      && (row.accuracy <= settings.categoryAccuracyWarn || row.timeoutRate >= settings.categoryTimeoutWarn))
     .slice(0, 4)
     .forEach((row) => {
       alerts.push({
         key: `cat_${row.category}`,
-        level: row.accuracy <= 52 ? "high" : "warn",
+        level: row.accuracy <= settings.categoryAccuracyHigh ? "high" : "warn",
         title: `התראת נושא: ${row.category}`,
         text: `דיוק ${row.accuracy}% | פקיעות זמן ${row.timeoutRate}% | מדגם ${row.total}.`,
-        recommendation: buildCategoryAlertRecommendation(row),
+        recommendation: buildCategoryAlertRecommendation(row, settings),
       });
     });
 
   (questionRows || [])
-    .filter((row) => row.total >= 3 && (row.failRate >= 50 || row.timeoutRate >= 32))
+    .filter((row) =>
+      row.total >= Math.max(3, settings.minAttemptsForAlerts - 1)
+      && (row.failRate >= settings.questionFailWarn || row.timeoutRate >= settings.questionTimeoutWarn))
     .slice(0, 5)
     .forEach((row) => {
       alerts.push({
         key: `q_${row.id}`,
-        level: row.failRate >= 60 ? "high" : "warn",
+        level: row.failRate >= settings.questionFailHigh ? "high" : "warn",
         title: "התראת שאלה",
         text: `"${clampText(row.question, 78)}" | נפילות ${row.failRate}% | פקיעות ${row.timeoutRate}% | מדגם ${row.total}.`,
-        recommendation: buildQuestionAlertRecommendation(row),
+        recommendation: buildQuestionAlertRecommendation(row, settings),
       });
     });
 
@@ -4823,6 +4973,7 @@ function renderLearningRecommendationsPanel(categoryRows, questionRows, attemptC
 
   const recommendations = [];
   const smartAlerts = Array.isArray(smartAlertsInput) ? smartAlertsInput : [];
+  const alertSettings = readLearningAlertSettings();
 
   smartAlerts.forEach((alert) => {
     if (!normalizeSpace(alert?.recommendation)) {
@@ -4836,7 +4987,9 @@ function renderLearningRecommendationsPanel(categoryRows, questionRows, attemptC
   }
 
   const weakCategories = (categoryRows || [])
-    .filter((row) => row.total >= 4 && row.accuracy < 65)
+    .filter((row) =>
+      row.total >= alertSettings.minAttemptsForAlerts
+      && row.accuracy <= Math.min(100, alertSettings.categoryAccuracyWarn + 7))
     .slice(0, 3);
   weakCategories.forEach((row) => {
     recommendations.push(
@@ -4845,7 +4998,9 @@ function renderLearningRecommendationsPanel(categoryRows, questionRows, attemptC
   });
 
   const hardQuestions = (questionRows || [])
-    .filter((row) => row.total >= 3 && row.failRate >= 50)
+    .filter((row) =>
+      row.total >= Math.max(3, alertSettings.minAttemptsForAlerts - 1)
+      && row.failRate >= alertSettings.questionFailWarn)
     .slice(0, 4);
   hardQuestions.forEach((row) => {
     recommendations.push(
@@ -4854,7 +5009,9 @@ function renderLearningRecommendationsPanel(categoryRows, questionRows, attemptC
   });
 
   const timeoutQuestions = (questionRows || [])
-    .filter((row) => row.total >= 3 && row.timeoutRate >= 30)
+    .filter((row) =>
+      row.total >= Math.max(3, alertSettings.minAttemptsForAlerts - 1)
+      && row.timeoutRate >= alertSettings.questionTimeoutWarn)
     .slice(0, 2);
   timeoutQuestions.forEach((row) => {
     recommendations.push(

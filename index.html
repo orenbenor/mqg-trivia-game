@@ -638,6 +638,41 @@
                 </div>
               </div>
               <p id="learningInsightsSummary" class="muted tight"></p>
+              <div class="form-grid question-tools">
+                <label class="field">
+                  <span>מדגם מינימלי להתראות</span>
+                  <input id="learningAlertMinAttempts" type="number" min="1" max="50" step="1" />
+                </label>
+                <label class="field">
+                  <span>דיוק נושא - התראת מעקב (%)</span>
+                  <input id="learningAlertCategoryWarn" type="number" min="0" max="100" step="1" />
+                </label>
+                <label class="field">
+                  <span>דיוק נושא - התראה גבוהה (%)</span>
+                  <input id="learningAlertCategoryHigh" type="number" min="0" max="100" step="1" />
+                </label>
+                <label class="field">
+                  <span>פקיעות זמן נושא - התראה (%)</span>
+                  <input id="learningAlertCategoryTimeoutWarn" type="number" min="0" max="100" step="1" />
+                </label>
+                <label class="field">
+                  <span>נפילות שאלה - התראת מעקב (%)</span>
+                  <input id="learningAlertQuestionFailWarn" type="number" min="0" max="100" step="1" />
+                </label>
+                <label class="field">
+                  <span>נפילות שאלה - התראה גבוהה (%)</span>
+                  <input id="learningAlertQuestionFailHigh" type="number" min="0" max="100" step="1" />
+                </label>
+                <label class="field">
+                  <span>פקיעות זמן שאלה - התראה (%)</span>
+                  <input id="learningAlertQuestionTimeoutWarn" type="number" min="0" max="100" step="1" />
+                </label>
+              </div>
+              <div class="actions-row compact">
+                <button id="saveLearningAlertSettingsBtn" class="secondary-btn" type="button">שמור רגישות התראות</button>
+                <button id="resetLearningAlertSettingsBtn" class="ghost-btn" type="button">איפוס ברירת מחדל</button>
+              </div>
+              <p id="learningAlertSettingsMsg" class="form-msg hidden"></p>
               <div id="learningAlertsList" class="cards-list learning-alert-list"></div>
               <div class="table-wrap">
                 <table>
