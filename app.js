@@ -5,6 +5,8 @@ const QUESTION_TIMEOUT_SECONDS = 30;
 const QUESTION_WARNING_AFTER_SECONDS = 15;
 const MAX_POINTS_PER_QUESTION = 120;
 const MIN_POINTS_PER_CORRECT = 20;
+const ADAPTIVE_PLAYER_MIN_ATTEMPTS = 1;
+const ADAPTIVE_SCORE_MIN_SIGNAL = 1.08;
 const MUSIC_DEFAULT_VOLUME = 0.12;
 const QUALITY_MIN_QUESTION_LEN = 24;
 const QUALITY_MIN_EXPLANATION_LEN = 42;
@@ -1210,6 +1212,9 @@ const gameState = {
   feedbackDeepOpen: false,
   wrong: [],
   musicStarted: false,
+  adaptiveMode: false,
+  adaptiveConfidence: 0,
+  adaptiveSignals: 0,
 };
 
 const adminState = {
@@ -1923,6 +1928,9 @@ function exportAttemptsCsv() {
     "duration_seconds",
     "avg_answer_seconds",
     "timeouts",
+    "adaptive_mode",
+    "adaptive_confidence",
+    "adaptive_signals",
     "played_at",
   ];
   const rows = attempts.map((attempt) => [
@@ -1934,6 +1942,9 @@ function exportAttemptsCsv() {
     Number(attempt?.durationSec || 0),
     Number(attempt?.avgAnswerSec || 0).toFixed(2),
     Number(attempt?.timeoutCount || 0),
+    Boolean(attempt?.adaptiveMode),
+    Number(attempt?.adaptiveConfidence || 0),
+    Number(attempt?.adaptiveSignals || 0),
     normalizeSpace(attempt?.playedAt),
   ]);
 
@@ -2107,6 +2118,9 @@ function resetAndGoToNewGame() {
   gameState.feedbackDeepOpen = false;
   gameState.questionStartedAt = 0;
   gameState.remainingSeconds = QUESTION_TIMEOUT_SECONDS;
+  gameState.adaptiveMode = false;
+  gameState.adaptiveConfidence = 0;
+  gameState.adaptiveSignals = 0;
   dom.screenQuiz.classList.remove("time-warning", "time-critical");
   hideMessage(dom.questionCycleResetMsg);
   hideMessage(dom.quickSetupError);
@@ -2154,10 +2168,12 @@ function startQuickGame() {
   const countValue = dom.questionCountSelect.value;
   const count = countValue === "all" ? questionPool.length : Number(countValue);
   const cycleScope = buildCycleScopeKey();
+  const adaptiveSelection = buildPlayerAdaptiveSelectionOptions(playerName, questionPool);
   const gameQuestions = pickGameQuestions(
     questionPool,
     Math.min(count, questionPool.length),
     cycleScope,
+    adaptiveSelection,
   );
 
   gameState.playerName = playerName;
@@ -2176,16 +2192,21 @@ function startQuickGame() {
   gameState.locked = false;
   gameState.feedbackDeepOpen = false;
   gameState.wrong = [];
+  gameState.adaptiveMode = adaptiveSelection.strategy === "adaptive";
+  gameState.adaptiveConfidence = Number(adaptiveSelection.confidence || 0);
+  gameState.adaptiveSignals = Number(adaptiveSelection.matchedSignals || 0);
 
   showScreen("screenQuiz");
   renderQuestion();
 }
 
-function pickGameQuestions(questionPool, count, scopeKey = "default") {
+function pickGameQuestions(questionPool, count, scopeKey = "default", options = {}) {
   const safeScope = normalizeSpace(scopeKey) || "default";
   const targetCount = Math.min(questionPool.length, Math.max(1, Number(count) || 1));
   const families = groupQuestionsByFamily(questionPool);
   const familyKeys = Array.from(families.keys());
+  const adaptiveScores = options?.adaptiveScores instanceof Map ? options.adaptiveScores : null;
+  const useAdaptiveStrategy = normalizeSpace(options?.strategy).toLowerCase() === "adaptive" && Boolean(adaptiveScores);
   const allQuestionIds = questionPool
     .map((question) => String(question?.id || "").trim())
     .filter(Boolean);
@@ -2225,10 +2246,9 @@ function pickGameQuestions(questionPool, count, scopeKey = "default") {
   const selectedIds = new Set();
   const selectedFamilies = [];
   const maxDiversified = Math.min(targetCount, availableFreshFamilyKeys.length);
-  const diversifiedFamilyOrder = pickRandom(
-    availableFreshFamilyKeys,
-    availableFreshFamilyKeys.length,
-  );
+  const diversifiedFamilyOrder = useAdaptiveStrategy
+    ? rankFamiliesByAdaptiveScore(availableFreshFamilyKeys, freshFamilies, adaptiveScores)
+    : pickRandom(availableFreshFamilyKeys, availableFreshFamilyKeys.length);
 
   for (let i = 0; i < diversifiedFamilyOrder.length; i += 1) {
     if (selected.length >= maxDiversified) {
@@ -2243,7 +2263,9 @@ function pickGameQuestions(questionPool, count, scopeKey = "default") {
       continue;
     }
 
-    const picked = pickRandom(familyQuestions, 1)[0];
+    const picked = useAdaptiveStrategy
+      ? pickAdaptiveQuestionFromPool(familyQuestions, adaptiveScores)
+      : pickRandom(familyQuestions, 1)[0];
     if (!picked) {
       continue;
     }
@@ -2255,7 +2277,9 @@ function pickGameQuestions(questionPool, count, scopeKey = "default") {
 
   if (selected.length < targetCount) {
     const leftovers = freshPool.filter((question) => !selectedIds.has(question.id));
-    const extra = pickRandom(leftovers, targetCount - selected.length);
+    const extra = useAdaptiveStrategy
+      ? pickAdaptiveQuestionsFromPool(leftovers, targetCount - selected.length, adaptiveScores)
+      : pickRandom(leftovers, targetCount - selected.length);
     extra.forEach((question) => {
       selected.push(question);
       selectedIds.add(question.id);
@@ -2290,6 +2314,62 @@ function pickGameQuestions(questionPool, count, scopeKey = "default") {
   }
 
   return selected;
+}
+
+function getAdaptiveQuestionScore(question, adaptiveScores) {
+  const questionId = normalizeSpace(question?.id);
+  if (!adaptiveScores || !questionId || !adaptiveScores.has(questionId)) {
+    return 1;
+  }
+  const raw = Number(adaptiveScores.get(questionId));
+  if (!Number.isFinite(raw) || raw <= 0) {
+    return 1;
+  }
+  return raw;
+}
+
+function getFamilyAdaptiveScore(familyKey, familyMap, adaptiveScores) {
+  const rows = familyMap.get(familyKey) || [];
+  if (!rows.length) {
+    return 1;
+  }
+  return rows.reduce((maxScore, row) => Math.max(maxScore, getAdaptiveQuestionScore(row, adaptiveScores)), 1);
+}
+
+function rankFamiliesByAdaptiveScore(familyKeys, familyMap, adaptiveScores) {
+  return familyKeys.slice().sort((a, b) => {
+    const scoreDiff = getFamilyAdaptiveScore(b, familyMap, adaptiveScores)
+      - getFamilyAdaptiveScore(a, familyMap, adaptiveScores);
+    if (Math.abs(scoreDiff) < 0.0001) {
+      return Math.random() > 0.5 ? 1 : -1;
+    }
+    return scoreDiff;
+  });
+}
+
+function pickAdaptiveQuestionFromPool(questionPool, adaptiveScores) {
+  if (!Array.isArray(questionPool) || !questionPool.length) {
+    return null;
+  }
+  const sorted = questionPool
+    .slice()
+    .sort((a, b) => getAdaptiveQuestionScore(b, adaptiveScores) - getAdaptiveQuestionScore(a, adaptiveScores));
+  const topScore = getAdaptiveQuestionScore(sorted[0], adaptiveScores);
+  const nearTop = sorted.filter(
+    (item) => getAdaptiveQuestionScore(item, adaptiveScores) >= topScore - 0.06,
+  );
+  return pickRandom(nearTop, 1)[0] || sorted[0] || null;
+}
+
+function pickAdaptiveQuestionsFromPool(questionPool, count, adaptiveScores) {
+  const safeCount = Math.max(0, Number(count) || 0);
+  if (!safeCount || !Array.isArray(questionPool) || !questionPool.length) {
+    return [];
+  }
+  return questionPool
+    .slice()
+    .sort((a, b) => getAdaptiveQuestionScore(b, adaptiveScores) - getAdaptiveQuestionScore(a, adaptiveScores))
+    .slice(0, safeCount);
 }
 
 function groupQuestionsByFamily(questionPool) {
@@ -2361,7 +2441,10 @@ function renderQuestion() {
   const current = gameState.index + 1;
   const total = gameState.questions.length;
 
-  dom.quizPlayerName.textContent = `שחקן: ${gameState.playerName}`;
+  const adaptiveSuffix = gameState.adaptiveMode
+    ? ` | מצב מותאם (${gameState.adaptiveConfidence}%)`
+    : "";
+  dom.quizPlayerName.textContent = `שחקן: ${gameState.playerName}${adaptiveSuffix}`;
   dom.quizProgress.textContent = `שאלה ${current}/${total}`;
   dom.quizScore.textContent = `ניקוד: ${Math.round(gameState.score)} נק'`;
   dom.quizProgressFill.style.width = `${Math.round((current / total) * 100)}%`;
@@ -2723,6 +2806,9 @@ function finishGame() {
   const avgAnswerSec = gameState.answerTimes.length
     ? Number((totalAnswerSec / gameState.answerTimes.length).toFixed(2))
     : 0;
+  const adaptiveText = gameState.adaptiveMode
+    ? ` | מצב מותאם אישי: פעיל (${gameState.adaptiveConfidence}% ביטחון)`
+    : "";
 
   saveAttempt({
     id: uid("attempt"),
@@ -2736,11 +2822,14 @@ function finishGame() {
     timeoutCount: gameState.timeoutCount,
     categoryStats: gameState.categoryStats,
     questionStats: gameState.questionStats,
+    adaptiveMode: gameState.adaptiveMode,
+    adaptiveConfidence: gameState.adaptiveConfidence,
+    adaptiveSignals: gameState.adaptiveSignals,
     playedAt: new Date().toISOString(),
   });
 
   dom.resultMain.textContent = resultHeadline(percent);
-  dom.resultSub.textContent = `ענית נכון על ${gameState.correctCount} מתוך ${total} שאלות (${percent}%). ניקוד סופי: ${Math.round(gameState.score)} נק'. זמן משחק: ${formatDuration(durationSec)} | זמן מענה ממוצע: ${avgAnswerSec.toFixed(1)} שניות | פקיעות זמן: ${gameState.timeoutCount}.`;
+  dom.resultSub.textContent = `ענית נכון על ${gameState.correctCount} מתוך ${total} שאלות (${percent}%). ניקוד סופי: ${Math.round(gameState.score)} נק'. זמן משחק: ${formatDuration(durationSec)} | זמן מענה ממוצע: ${avgAnswerSec.toFixed(1)} שניות | פקיעות זמן: ${gameState.timeoutCount}.${adaptiveText}`;
 
   renderWrongAnswers();
   showScreen("screenResult");
@@ -3217,6 +3306,153 @@ function buildCycleScopeKey() {
     return "telemarketing_seasonal";
   }
   return "telemarketing_regular";
+}
+
+function normalizePlayerKey(value) {
+  return normalizeSpace(value).toLowerCase();
+}
+
+function aggregateCategoryStats(targetMap, categoryStats) {
+  if (!categoryStats || typeof categoryStats !== "object") {
+    return;
+  }
+  Object.entries(categoryStats).forEach(([category, stat]) => {
+    const safeCategory = normalizeSpace(category) || "ללא קטגוריה";
+    const total = Math.max(0, Number(stat?.total || 0));
+    if (!total) {
+      return;
+    }
+    const correct = clampNumber(Number(stat?.correct || 0), 0, total);
+    const timeouts = clampNumber(Number(stat?.timeouts || 0), 0, total);
+    const wrong = Math.max(0, total - correct);
+    if (!targetMap.has(safeCategory)) {
+      targetMap.set(safeCategory, { total: 0, correct: 0, wrong: 0, timeouts: 0 });
+    }
+    const current = targetMap.get(safeCategory);
+    current.total += total;
+    current.correct += correct;
+    current.wrong += wrong;
+    current.timeouts += timeouts;
+  });
+}
+
+function aggregateFamilyStatsFromAttempt(targetMap, questionStats) {
+  if (!questionStats || typeof questionStats !== "object") {
+    return;
+  }
+  const entries = Array.isArray(questionStats) ? questionStats : Object.values(questionStats);
+  entries.forEach((entry) => {
+    const questionId = normalizeSpace(entry?.questionId || entry?.id);
+    if (!questionId) {
+      return;
+    }
+    const familyKey = getQuestionFamilyKey({ id: questionId, question: entry?.questionText });
+    const total = Math.max(0, Number(entry?.total || 0));
+    if (!total) {
+      return;
+    }
+    const correct = clampNumber(Number(entry?.correct || 0), 0, total);
+    const wrong = clampNumber(Number(entry?.wrong || Math.max(0, total - correct)), 0, total);
+    const timeouts = clampNumber(Number(entry?.timeouts || 0), 0, total);
+    if (!targetMap.has(familyKey)) {
+      targetMap.set(familyKey, { total: 0, correct: 0, wrong: 0, timeouts: 0 });
+    }
+    const current = targetMap.get(familyKey);
+    current.total += total;
+    current.correct += correct;
+    current.wrong += wrong;
+    current.timeouts += timeouts;
+  });
+}
+
+function buildPlayerAdaptiveProfile(playerAttempts) {
+  const safeAttempts = Array.isArray(playerAttempts) ? playerAttempts : [];
+  const categoryStats = new Map();
+  const familyStats = new Map();
+
+  safeAttempts.forEach((attempt) => {
+    aggregateCategoryStats(categoryStats, attempt?.categoryStats);
+    aggregateFamilyStatsFromAttempt(familyStats, attempt?.questionStats);
+  });
+
+  return {
+    categoryStats,
+    familyStats,
+  };
+}
+
+function buildAdaptiveScoresForPool(questionPool, profile) {
+  const output = new Map();
+  if (!profile || !Array.isArray(questionPool)) {
+    return output;
+  }
+
+  questionPool.forEach((question) => {
+    const questionId = normalizeSpace(question?.id);
+    if (!questionId) {
+      return;
+    }
+
+    const familyKey = getQuestionFamilyKey(question);
+    const categoryKey = normalizeSpace(question?.category) || "ללא קטגוריה";
+    const family = profile.familyStats.get(familyKey);
+    const category = profile.categoryStats.get(categoryKey);
+    let adaptiveScore = 1;
+
+    if (family?.total >= 1) {
+      const familyFailRate = Math.max(0, family.wrong + family.timeouts) / family.total;
+      const familyTimeoutRate = Math.max(0, family.timeouts) / family.total;
+      const familyGap = Math.max(0, 1 - family.correct / family.total);
+      adaptiveScore += familyFailRate * 2.8 + familyTimeoutRate * 1.7 + familyGap * 1.2;
+      adaptiveScore += Math.min(0.45, family.total * 0.05);
+    }
+
+    if (category?.total >= 2) {
+      const categoryFailRate = Math.max(0, category.wrong) / category.total;
+      const categoryTimeoutRate = Math.max(0, category.timeouts) / category.total;
+      adaptiveScore += categoryFailRate * 1.35 + categoryTimeoutRate * 0.9;
+    }
+
+    output.set(questionId, Number(adaptiveScore.toFixed(4)));
+  });
+
+  return output;
+}
+
+function buildPlayerAdaptiveSelectionOptions(playerName, questionPool) {
+  const playerKey = normalizePlayerKey(playerName);
+  if (!playerKey || !Array.isArray(questionPool) || !questionPool.length) {
+    return { strategy: "random" };
+  }
+
+  const attempts = readStorage(STORAGE_KEYS.attempts, []);
+  const playerAttempts = attempts.filter(
+    (attempt) => normalizePlayerKey(attempt?.playerName) === playerKey,
+  );
+  if (playerAttempts.length < ADAPTIVE_PLAYER_MIN_ATTEMPTS) {
+    return { strategy: "random" };
+  }
+
+  const profile = buildPlayerAdaptiveProfile(playerAttempts);
+  const adaptiveScores = buildAdaptiveScoresForPool(questionPool, profile);
+  const signalCount = Array.from(adaptiveScores.values()).filter(
+    (score) => Number(score) >= ADAPTIVE_SCORE_MIN_SIGNAL,
+  ).length;
+  if (!signalCount) {
+    return { strategy: "random" };
+  }
+
+  const confidence = Math.min(
+    100,
+    Math.round((signalCount / Math.max(1, questionPool.length)) * 70 + Math.min(30, playerAttempts.length * 5)),
+  );
+
+  return {
+    strategy: "adaptive",
+    adaptiveScores,
+    confidence,
+    matchedSignals: signalCount,
+  };
 }
 
 function updateLandingModeCards() {
@@ -4219,13 +4455,16 @@ function renderAttemptsTable() {
     const total = Number.isFinite(attempt.total) ? attempt.total : 0;
     const avgAnswerSec = Number(attempt.avgAnswerSec || 0);
     const timeoutCount = Number(attempt.timeoutCount || 0);
+    const adaptiveTag = attempt?.adaptiveMode
+      ? ` | מותאם ${Number(attempt?.adaptiveConfidence || 0)}%`
+      : "";
 
     row.appendChild(makeCell(attempt.playerName));
     row.appendChild(makeCell(`${points} נק' (${correct}/${total})`));
     row.appendChild(makeCell(`${attempt.percent}%`));
     row.appendChild(
       makeCell(
-        `${formatDuration(attempt.durationSec || 0)} | ממוצע ${avgAnswerSec.toFixed(1)} ש׳ | פקיעות ${timeoutCount}`,
+        `${formatDuration(attempt.durationSec || 0)} | ממוצע ${avgAnswerSec.toFixed(1)} ש׳ | פקיעות ${timeoutCount}${adaptiveTag}`,
       ),
     );
     row.appendChild(makeCell(formatDateTime(attempt.playedAt)));
@@ -4360,9 +4599,10 @@ function renderLearningMetrics() {
   }
 
   const questionRows = buildQuestionLearningRows(attempts);
-  const alertCount = renderLearningAlertsPanel(categoryRows, questionRows, attempts.length);
+  const smartAlerts = buildSmartLearningAlerts(categoryRows, questionRows, attempts.length);
+  const alertCount = renderLearningAlertsPanel(smartAlerts);
   renderQuestionDifficultyList(questionRows);
-  renderLearningRecommendationsPanel(categoryRows, questionRows, attempts.length);
+  renderLearningRecommendationsPanel(categoryRows, questionRows, attempts.length, smartAlerts);
 
   if (dom.learningInsightsSummary) {
     const trackedQuestions = questionRows.filter((item) => item.total >= 2).length;
@@ -4514,13 +4754,83 @@ function renderQuestionDifficultyList(questionRows) {
   });
 }
 
-function renderLearningRecommendationsPanel(categoryRows, questionRows, attemptCount) {
+function buildCategoryAlertRecommendation(row) {
+  if (row.accuracy <= 52) {
+    return `הוסף לפחות 4 שאלות חיזוק בקטגוריית "${row.category}" ועדכן ניסוח להסבר ברור יותר.`;
+  }
+  if (row.timeoutRate >= 28) {
+    return `קצר נוסח שאלה ואפשרויות בקטגוריית "${row.category}" ובחן האם נדרש כרטיס למידה מקדים.`;
+  }
+  return `בצע רענון מסיחים והוסף 2-3 שאלות תרגול ממוקדות בקטגוריית "${row.category}".`;
+}
+
+function buildQuestionAlertRecommendation(row) {
+  if (row.failRate >= 60) {
+    return `ערוך את השאלה במאגר, החלף לפחות שני מסיחים חלשים והדגש את ההסבר הנכון.`;
+  }
+  if (row.timeoutRate >= 32) {
+    return `קצר את נוסח השאלה או את אורכי התשובות כדי לצמצם פקיעות זמן.`;
+  }
+  return `בדוק בהירות ניסוח ועדכן את כרטיס הלמידה כך שהמסר המרכזי יופיע לפני השאלה.`;
+}
+
+function buildSmartLearningAlerts(categoryRows, questionRows, attemptCount) {
+  const alerts = [];
+  if (attemptCount < 4) {
+    alerts.push({
+      key: "sample_small",
+      level: "warn",
+      title: "מדגם קטן",
+      text: "מומלץ לצבור לפחות 4 משחקים כדי לקבל התרעות יציבות יותר.",
+      recommendation: "המשך איסוף נתונים לפני קבלת החלטות תוכן רחבות.",
+    });
+  }
+
+  (categoryRows || [])
+    .filter((row) => row.total >= 4 && (row.accuracy <= 58 || row.timeoutRate >= 28))
+    .slice(0, 4)
+    .forEach((row) => {
+      alerts.push({
+        key: `cat_${row.category}`,
+        level: row.accuracy <= 52 ? "high" : "warn",
+        title: `התראת נושא: ${row.category}`,
+        text: `דיוק ${row.accuracy}% | פקיעות זמן ${row.timeoutRate}% | מדגם ${row.total}.`,
+        recommendation: buildCategoryAlertRecommendation(row),
+      });
+    });
+
+  (questionRows || [])
+    .filter((row) => row.total >= 3 && (row.failRate >= 50 || row.timeoutRate >= 32))
+    .slice(0, 5)
+    .forEach((row) => {
+      alerts.push({
+        key: `q_${row.id}`,
+        level: row.failRate >= 60 ? "high" : "warn",
+        title: "התראת שאלה",
+        text: `"${clampText(row.question, 78)}" | נפילות ${row.failRate}% | פקיעות ${row.timeoutRate}% | מדגם ${row.total}.`,
+        recommendation: buildQuestionAlertRecommendation(row),
+      });
+    });
+
+  return alerts.slice(0, 8);
+}
+
+function renderLearningRecommendationsPanel(categoryRows, questionRows, attemptCount, smartAlertsInput = []) {
   if (!dom.learningRecommendationsList) {
     return;
   }
   dom.learningRecommendationsList.innerHTML = "";
 
   const recommendations = [];
+  const smartAlerts = Array.isArray(smartAlertsInput) ? smartAlertsInput : [];
+
+  smartAlerts.forEach((alert) => {
+    if (!normalizeSpace(alert?.recommendation)) {
+      return;
+    }
+    recommendations.push(alert.recommendation);
+  });
+
   if (attemptCount < 5) {
     recommendations.push("הגדל מדגם: לפחות 5-8 משחקים נדרשים כדי לזהות דפוסי קושי יציבים.");
   }
@@ -4559,7 +4869,8 @@ function renderLearningRecommendationsPanel(categoryRows, questionRows, attemptC
     return;
   }
 
-  recommendations.slice(0, 8).forEach((text) => {
+  const deduped = Array.from(new Set(recommendations.map((item) => normalizeSpace(item)).filter(Boolean)));
+  deduped.slice(0, 8).forEach((text) => {
     const card = document.createElement("article");
     card.className = "info-card";
     const line = document.createElement("p");
@@ -4569,40 +4880,13 @@ function renderLearningRecommendationsPanel(categoryRows, questionRows, attemptC
   });
 }
 
-function renderLearningAlertsPanel(categoryRows, questionRows, attemptCount) {
+function renderLearningAlertsPanel(alertsInput) {
   if (!dom.learningAlertsList) {
     return 0;
   }
 
   dom.learningAlertsList.innerHTML = "";
-  const alerts = [];
-
-  if (attemptCount < 4) {
-    alerts.push({
-      level: "warn",
-      text: "מדגם קטן: מומלץ לצבור לפחות 4 משחקים כדי לקבל התרעות יציבות יותר.",
-    });
-  }
-
-  const weakCategories = (categoryRows || [])
-    .filter((row) => row.total >= 4 && (row.accuracy <= 58 || row.timeoutRate >= 28))
-    .slice(0, 3);
-  weakCategories.forEach((row) => {
-    alerts.push({
-      level: row.accuracy <= 52 ? "high" : "warn",
-      text: `התראת נושא: בקטגוריית "${row.category}" יש דיוק ${row.accuracy}% ופקיעות זמן ${row.timeoutRate}% (מדגם ${row.total}).`,
-    });
-  });
-
-  const weakQuestions = (questionRows || [])
-    .filter((row) => row.total >= 3 && (row.failRate >= 50 || row.timeoutRate >= 32))
-    .slice(0, 4);
-  weakQuestions.forEach((row) => {
-    alerts.push({
-      level: row.failRate >= 60 ? "high" : "warn",
-      text: `התראת שאלה: "${clampText(row.question, 78)}" עם נפילות ${row.failRate}% ופקיעות זמן ${row.timeoutRate}% (מדגם ${row.total}).`,
-    });
-  });
+  const alerts = Array.isArray(alertsInput) ? alertsInput : [];
 
   if (!alerts.length) {
     dom.learningAlertsList.appendChild(
@@ -4619,7 +4903,7 @@ function renderLearningAlertsPanel(categoryRows, questionRows, attemptCount) {
     header.className = "section-head";
 
     const title = document.createElement("h4");
-    title.textContent = alert.level === "high" ? "התראה גבוהה" : "התראת מעקב";
+    title.textContent = normalizeSpace(alert.title) || (alert.level === "high" ? "התראה גבוהה" : "התראת מעקב");
 
     const badge = document.createElement("span");
     badge.className = `badge ${alert.level === "high" ? "audit-level bad" : "audit-level warn"}`;
@@ -4631,8 +4915,13 @@ function renderLearningAlertsPanel(categoryRows, questionRows, attemptCount) {
     const line = document.createElement("p");
     line.textContent = alert.text;
 
+    const recommendationLine = document.createElement("p");
+    recommendationLine.className = "muted tight";
+    recommendationLine.textContent = `תיקון מומלץ: ${normalizeSpace(alert.recommendation) || "בדוק ניסוח, מסיחים וכרטיס למידה לפני מחזור המשחק הבא."}`;
+
     card.appendChild(header);
     card.appendChild(line);
+    card.appendChild(recommendationLine);
     dom.learningAlertsList.appendChild(card);
   });
 
