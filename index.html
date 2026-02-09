@@ -48,19 +48,48 @@
 
       <section id="screenLanding" class="panel screen active">
         <h2>איך תרצה להיכנס?</h2>
+        <p class="muted">שלב 1: בחר מסלול עבודה.</p>
+        <div class="entry-grid entry-department-grid">
+          <article id="entryTelemarketingCard" class="entry-card">
+            <h3>טלמרקטינג</h3>
+            <p>משחק מהיר, משחק מהיר עונתי, ומשחק ייעודי על פי פעילות.</p>
+            <button id="chooseTelemarketingBtn" class="primary-btn">בחר טלמרקטינג</button>
+          </article>
+
+          <article id="entryEducationCard" class="entry-card">
+            <h3>אגף חינוך</h3>
+            <p>משחק מהיר ייעודי לאגף החינוך עם בנק שאלות נפרד.</p>
+            <button id="chooseEducationBtn" class="secondary-btn">בחר אגף חינוך</button>
+          </article>
+        </div>
+
+        <p id="entryDepartmentState" class="muted tight"></p>
+        <p id="entryDepartmentMsg" class="form-msg hidden"></p>
+
+        <div id="entryModesWrap" class="hidden">
+          <p class="muted">שלב 2: בחר סוג משחק.</p>
+          <div class="entry-grid">
+            <article class="entry-card">
+              <h3>משחק מהיר</h3>
+              <p>התחלת משחק תוך שניות: שם שחקן, ניקוד ומעקב ביצועים.</p>
+              <button id="goQuickBtn" class="primary-btn">למשחק מהיר</button>
+            </article>
+
+            <article id="entrySeasonalCard" class="entry-card">
+              <h3>משחק מהיר עונתי</h3>
+              <p>שאלות ממוקדות על פעילות התנועה מאוקטובר 2025 ומעלה בלבד.</p>
+              <button id="goSeasonalQuickBtn" class="secondary-btn">למשחק מהיר עונתי</button>
+            </article>
+
+            <article id="entryActivityCard" class="entry-card">
+              <h3>משחק על פי פעילות</h3>
+              <p>בחירת נושא פעילות ממוקד עם 30 שאלות ייעודיות לכל נושא.</p>
+              <button id="goActivityQuickBtn" class="secondary-btn">למשחק על פי פעילות</button>
+            </article>
+          </div>
+        </div>
+
         <div class="entry-grid">
-          <article class="entry-card">
-            <h3>משחק מהיר</h3>
-            <p>התחלת משחק תוך שניות: שם שחקן, ניקוד ומעקב ביצועים.</p>
-            <button id="goQuickBtn" class="primary-btn">למשחק מהיר</button>
-          </article>
-
-          <article class="entry-card">
-            <h3>משחק מהיר עונתי</h3>
-            <p>שאלות ממוקדות על פעילות התנועה מאוקטובר 2025 ומעלה בלבד.</p>
-            <button id="goSeasonalQuickBtn" class="secondary-btn">למשחק מהיר עונתי</button>
-          </article>
-
           <article class="entry-card admin-entry">
             <h3>כניסת מנהל</h3>
             <p>מעקב אחרי שחקנים, הוספת פעילויות, יצירת שאלות לאישור ועדכון המאגר.</p>
@@ -70,7 +99,7 @@
       </section>
 
       <section id="screenQuickSetup" class="panel screen hidden">
-        <h2>משחק מהיר</h2>
+        <h2 id="quickSetupTitle">משחק מהיר</h2>
         <p id="quickModeNote" class="muted tight"></p>
         <div class="form-grid">
           <label class="field">
@@ -87,6 +116,15 @@
               <option value="20">20</option>
               <option value="30">30</option>
               <option value="all">כל המאגר</option>
+            </select>
+          </label>
+
+          <label id="activityTopicField" class="field hidden">
+            <span>בחר נושא פעילות</span>
+            <select id="activityTopicSelect">
+              <option value="oct7" selected>הקמת ועדת חקירה ממלכתית על השביעי באוקטובר</option>
+              <option value="burden">שוויון בנטל</option>
+              <option value="judicial">ההפיכה המשפטית</option>
             </select>
           </label>
 
@@ -188,10 +226,11 @@
         <div class="admin-head">
           <div>
             <h2>לוח מנהל</h2>
-            <p class="muted">ניהול פעילות, יצירת שאלות, ומעקב אחרי ביצועי שחקנים.</p>
+            <p class="muted">ניהול מאגר, ניהול מנהלים, הוספת תוכן חדש ומעקב תוצאות שחקנים.</p>
           </div>
           <div class="actions-row compact">
-            <button id="openQuestionBankBtn" class="secondary-btn hidden" type="button">הכנס למאגר השאלות</button>
+            <button id="openQuestionBankBtn" class="secondary-btn" type="button">מאגר שאלות</button>
+            <button id="openAdminManagersBtn" class="ghost-btn" type="button">ניהול מנהלים</button>
             <button id="backToAdminMainBtn" class="ghost-btn hidden" type="button">חזרה ללוח המנהל</button>
             <button id="adminLogoutBtn" class="ghost-btn">התנתקות</button>
           </div>
@@ -214,7 +253,7 @@
             aria-selected="false"
             data-admin-tab-target="content"
           >
-            יצירת תוכן
+            הוסף תוכן חדש
           </button>
           <button
             class="admin-tab-btn"
@@ -232,7 +271,7 @@
             aria-selected="false"
             data-admin-tab-target="learning"
           >
-            למידה וביצועים
+            מעקב תוצאות שחקנים
           </button>
           <button
             class="admin-tab-btn"
@@ -241,7 +280,7 @@
             aria-selected="false"
             data-admin-tab-target="security"
           >
-            מנהלים ואבטחה
+            ניהול מנהלים
           </button>
         </div>
 
@@ -278,13 +317,13 @@
               </div>
               <div class="actions-row">
                 <button type="button" class="secondary-btn" data-admin-jump-tab="content">
-                  יצירת תוכן ושאלות
+                  הוסף תוכן חדש
                 </button>
                 <button type="button" class="ghost-btn" data-admin-jump-tab="questionBank">
                   מעבר למאגר השאלות
                 </button>
                 <button type="button" class="ghost-btn" data-admin-jump-tab="learning">
-                  צפייה בתוצאות וניתוח
+                  מעקב תוצאות שחקנים
                 </button>
               </div>
             </section>
@@ -298,8 +337,8 @@
           >
             <section class="admin-section admin-section-first">
               <div class="section-head">
-                <h3>יצירת שאלות מטקסט ארוך</h3>
-                <p class="muted tight">הדבק טקסט או העלה קובץ, נתח אותו, וצור ממנו 5/10/15 שאלות.</p>
+                <h3>הוסף תוכן חדש מטקסט חופשי</h3>
+                <p class="muted tight">הדבק טקסט ולחץ Enter לניתוח אוטומטי, זיהוי נושא והצעת 10 שאלות.</p>
               </div>
 
               <div class="form-grid">
@@ -308,7 +347,7 @@
                   <textarea
                     id="longTextInput"
                     rows="10"
-                    placeholder="הדבק כאן טקסט ארוך בכל אורך..."
+                    placeholder="הדבק כאן טקסט חופשי. Enter ינתח את הטקסט ויציע 10 שאלות."
                   ></textarea>
                 </label>
 
@@ -364,11 +403,12 @@
               </div>
 
               <div class="actions-row">
-                <button id="analyzeLongTextBtn" type="button" class="secondary-btn">קרא והבן את הכל</button>
-                <button id="generateLongTextDraftsBtn" type="button" class="primary-btn" disabled>צור שאלות מהטקסט</button>
-                <button id="approveAllTextDraftsBtn" type="button" class="ghost-btn" disabled>הוסף את כל השאלות שנוצרו</button>
+                <button id="analyzeLongTextBtn" type="button" class="secondary-btn">נתח טקסט והצע 10 שאלות</button>
+                <button id="generateLongTextDraftsBtn" type="button" class="primary-btn" disabled>רענן הצעת שאלות</button>
+                <button id="approveAllTextDraftsBtn" type="button" class="ghost-btn" disabled>הוסף את כל השאלות למאגר</button>
               </div>
               <p id="longTextMsg" class="form-msg hidden"></p>
+              <p id="longTextTopicTitle" class="muted tight hidden"></p>
               <div id="longTextDraftsPreview" class="cards-list"></div>
             </section>
 
@@ -587,6 +627,7 @@
                 <button id="clearAttemptsBtn" class="ghost-btn">ניקוי נתונים</button>
               </div>
               <p id="learningInsightsSummary" class="muted tight"></p>
+              <div id="learningAlertsList" class="cards-list learning-alert-list"></div>
               <div class="table-wrap">
                 <table>
                   <thead>

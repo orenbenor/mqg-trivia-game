@@ -31,6 +31,8 @@ const STORAGE_KEYS = {
   musicSettings: "mqg_music_settings_v1",
   questionCycleUsedIds: "mqg_question_cycle_used_ids_v1",
   familyCycleUsedIds: "mqg_family_cycle_used_ids_v1",
+  questionCycleByScope: "mqg_question_cycle_scope_used_ids_v1",
+  familyCycleByScope: "mqg_family_cycle_scope_used_ids_v1",
   adminUsers: "mqg_admin_users_v1",
 };
 const REMOTE_SYNCABLE_KEYS = [
@@ -42,6 +44,8 @@ const REMOTE_SYNCABLE_KEYS = [
   STORAGE_KEYS.questionOverrides,
   STORAGE_KEYS.questionCycleUsedIds,
   STORAGE_KEYS.familyCycleUsedIds,
+  STORAGE_KEYS.questionCycleByScope,
+  STORAGE_KEYS.familyCycleByScope,
 ];
 const BACKEND_DEFAULT_CONFIG = {
   enabled: false,
@@ -279,6 +283,196 @@ const QUESTION_VARIANT_PREFIXES = [
   "בהמשך למסר נגד שחיתות שלטונית,",
   "בהתאם לפעילות הנוכחית של התנועה,",
 ];
+
+const ENTRY_DEPARTMENTS = {
+  TELEMARKETING: "telemarketing",
+  EDUCATION: "education",
+};
+
+const QUICK_MODES = {
+  REGULAR: "regular",
+  SEASONAL: "seasonal",
+  ACTIVITY: "activity",
+};
+
+const GENERATED_TOPIC_STEMS = [
+  "איזו קביעה משקפת בצורה הטובה ביותר את עמדת התנועה בנושא {topic}?",
+  "לפי עקרונות המהלך בנושא {topic}, מהו הצעד הנכון ביותר?",
+  "מה מהבאים תואם למדיניות אחראית שנדרשת בנושא {topic}?",
+  "בהיבט של שלטון החוק, איזו אמירה נכונה לגבי {topic}?",
+  "איזה מהמשפטים הבאים מתאר נכון את היעד המרכזי בנושא {topic}?",
+  "מהו הדגש העיקרי שעליו מצביע הדיון הציבורי סביב {topic}?",
+  "כאשר בוחנים יישום בפועל של {topic}, מה נכון לומר?",
+  "איזו אפשרות מייצגת גישה מוסדית תקינה בנושא {topic}?",
+];
+
+const TELEMARKETING_ACTIVITY_TOPIC_CONFIGS = [
+  {
+    id: "oct7",
+    title: "הקמת ועדת חקירה ממלכתית על השביעי באוקטובר",
+    shortTitle: "הקמת ועדת חקירה ממלכתית על 7 באוקטובר",
+    category: "מערכת המשפט ומינויים",
+    kind: "activity",
+    date: "2026-02-09",
+    learn:
+      "הדגש בנושא זה הוא חקירה עצמאית, אמינה ומבוססת נתונים, עם מסקנות שניתנות ליישום ממשי.",
+    facts: [
+      "ועדת חקירה ממלכתית אמורה לפעול באופן עצמאי מהדרג הפוליטי.",
+      "מטרת הוועדה היא בירור עומק של הכשלים שהובילו לאירועי 7 באוקטובר.",
+      "לוועדה ממלכתית יש סמכות לזמן עדים ולדרוש מסמכים רלוונטיים.",
+      "אמון ציבורי דורש הליך בדיקה מקצועי ושקוף ככל האפשר.",
+      "קביעת לוחות זמנים ברורים מונעת דחיות בלתי סבירות.",
+      "הבדיקה צריכה לכלול אחריות בדרג המדיני והמקצועי גם יחד.",
+      "דוחות ביניים יכולים לשפר מוכנות עוד לפני הדוח הסופי.",
+      "המלצות אופרטיביות נדרשות כדי למנוע חזרה על כשלים.",
+      "תיעוד מלא של שרשרת קבלת ההחלטות הוא תנאי להפקת לקחים.",
+      "שיתוף ציבור ומשפחות הנפגעים מחזק את אמינות התהליך.",
+      "בחינה של מערכי התרעה ומענה היא חלק מרכזי במנדט הוועדה.",
+      "דו\"ח נגיש לציבור מסייע לבקרה אזרחית על יישום המלצות.",
+      "פיקוח מתמשך לאחר פרסום המסקנות חיוני להטמעתן.",
+      "בירור בלתי תלוי עדיף על מנגנון בדיקה הנתון לניגוד עניינים.",
+      "חקירה ממלכתית אמורה לבחון לא רק מה קרה אלא גם למה זה קרה.",
+    ],
+    distractors: [
+      "הוועדה נועדה בעיקר ליחסי ציבור ללא סמכויות חקירה מעשיות.",
+      "אין צורך בבדיקת הדרג המדיני אם נבדקים רק גורמי שטח.",
+      "פרסום מסקנות לציבור אינו חשוב כל עוד מתקיים דיון פנימי.",
+      "אפשר לדחות את הבדיקה לשנים קדימה בלי לפגוע בהפקת לקחים.",
+      "מספיק לפרסם סיכום קצר ללא המלצות יישומיות.",
+      "עדיף להימנע מזימון עדים כדי לקצר הליכים.",
+      "בדיקה אפקטיבית לא מחייבת נתונים או מסמכים רשמיים.",
+      "אין ערך לדוחות ביניים בזמן שהאירוע עדיין נבחן.",
+      "הפרדת אחריות בין דרגים אינה רלוונטית לחקירה מערכתית.",
+      "אמון ציבורי נשמר גם כשאין שקיפות על עבודת הוועדה.",
+      "אין צורך לעקוב אחרי יישום ההמלצות לאחר פרסום הדוח.",
+      "מנגנון תלוי ממשלה מספק אותה רמת עצמאות כמו ועדה ממלכתית.",
+    ],
+  },
+  {
+    id: "burden",
+    title: "שוויון בנטל",
+    shortTitle: "שוויון בנטל",
+    category: "שוויון בנטל",
+    kind: "activity",
+    date: "2026-02-09",
+    learn:
+      "הקו המרכזי הוא חובת שירות הוגנת, שקופה ואכיפה עקבית שמגובה בנתונים ומדדי ביצוע.",
+    facts: [
+      "שוויון בנטל מחייב מסגרת שירות הוגנת לכלל האוכלוסיות.",
+      "יעדי גיוס חייבים להיות מדידים, שקופים ומבוססי ביצוע.",
+      "אכיפה אפקטיבית כוללת כלים כלכליים ואישיים לפי חוק.",
+      "פרסום נתונים שוטף מאפשר בקרה ציבורית אמינה.",
+      "פטורים צריכים להיות חריגים, ממוקדים ומנומקים.",
+      "שירות חלופי חייב להיות משמעותי ומפוקח ברמה לאומית.",
+      "לכידות חברתית מתחזקת כשחלוקת הנטל נתפסת כהוגנת.",
+      "המדינה אחראית ליישום בפועל ולא רק להצגת יעדים.",
+      "תמריצים לבדם לא מספיקים ללא מנגנון אכיפה ברור.",
+      "פיקוח פרלמנטרי קבוע מחזק אמון בהחלטות בנושא השירות.",
+      "ניטור חודשי של נתוני גיוס מאפשר תיקון מהיר בזמן אמת.",
+      "הסדרה ארוכת טווח דורשת מדדי הצלחה ברורים מראש.",
+      "השתמטות שיטתית פוגעת בעיקרון השוויון בפני החוק.",
+      "מסלולי שירות מותאמים יכולים לשפר השתלבות בלי לפגוע בעיקרון השוויון.",
+      "שילוב בין יעדים, אכיפה ושקיפות הוא בסיס למדיניות יציבה.",
+    ],
+    distractors: [
+      "שוויון בנטל יכול להישען על הצהרות בלבד ללא מדדי ביצוע.",
+      "פטורים רחבים ללא נימוק מחזקים את אמון הציבור במערכת.",
+      "אין צורך בפרסום נתונים אם קיימת הערכה פנימית.",
+      "תמריצים מספיקים לחלוטין גם בלי אכיפה בכלל.",
+      "פיקוח שוטף של הכנסת מיותר כאשר נקבעת מדיניות ממשלתית.",
+      "מדיניות שירות יעילה לא דורשת בדיקת תוצאות תקופתית.",
+      "ניתן להשיג שוויון גם כשאכיפה מופעלת באופן לא אחיד.",
+      "שירות חלופי יכול להיות סמלי בלבד בלי סטנדרטים ברורים.",
+      "אין קשר בין חלוקת הנטל לבין תחושת הלכידות החברתית.",
+      "היעדר נתונים לא פוגע ביכולת להעריך עמידה ביעדים.",
+      "החלת כללים שונים לקבוצות שונות מחזקת שוויון משפטי.",
+      "מדיניות יציבה לא מחייבת כלל מנגנון בקרה.",
+    ],
+  },
+  {
+    id: "judicial",
+    title: "ההפיכה המשפטית",
+    shortTitle: "ההפיכה המשפטית",
+    category: "מערכת המשפט ומינויים",
+    kind: "activity",
+    date: "2026-02-09",
+    learn:
+      "הדגש הוא שמירה על איזונים ובלמים, עצמאות שיפוטית והליכי חקיקה אחראיים שמגנים על זכויות יסוד.",
+    facts: [
+      "עצמאות מערכת המשפט היא רכיב יסודי בהגנה על זכויות אדם.",
+      "איזונים ובלמים נועדו למנוע ריכוז כוח בידי גורם שלטוני יחיד.",
+      "ביקורת שיפוטית בוחנת את חוקיות פעולות הרשות המבצעת והמחוקקת.",
+      "שינויים מבניים דורשים דיון ציבורי רחב ושקוף.",
+      "חקיקה מהירה מדי עלולה לפגוע באיכות ההסדרים.",
+      "שקיפות עבודת הוועדות חיונית לאמון הציבור בתהליך.",
+      "מנגנון מינוי שופטים מאוזן חשוב לשמירה על עצמאות מקצועית.",
+      "ייעוץ משפטי עצמאי מסייע למנוע החלטות בלתי חוקיות.",
+      "פגיעה בביקורת החוקתית עלולה להשפיע על קבוצות מיעוט.",
+      "יציבות משפטית תורמת גם לוודאות כלכלית ומשילות תקינה.",
+      "שיח ציבורי אחראי מפחית קיטוב סביב מערכת המשפט.",
+      "בדיקת השלכות רוחב צריכה להקדים כל שינוי מוסדי עמוק.",
+      "אמון ציבורי נשען על תפיסה של עצמאות מקצועית ולא תלות פוליטית.",
+      "הגבלת כוח שלטוני דורשת כללים ברורים ואכיפים.",
+      "רפורמה מאוזנת נמדדת ביכולת לשמור על משילות לצד זכויות.",
+    ],
+    distractors: [
+      "עצמאות שיפוטית פוגעת מטבעה במשילות ולכן אין בה צורך.",
+      "ריכוז כוח בידי גורם אחד מייעל שלטון ולכן עדיף על איזונים.",
+      "ביקורת שיפוטית מיותרת כאשר יש רוב פוליטי ברור.",
+      "חקיקה מבנית יכולה להתקדם ללא דיון ציבורי כלל.",
+      "שקיפות הוועדות אינה משפיעה על אמון הציבור.",
+      "מינוי שופטים פוליטי בלבד מספק אותה עצמאות מקצועית.",
+      "ייעוץ משפטי תלוי דרג פוליטי יעיל יותר לשמירה על חוקיות.",
+      "אין השפעה לשינויים חוקתיים על קבוצות מיעוט.",
+      "יציבות משפטית אינה קשורה כלל לכלכלה או להשקעות.",
+      "שיח מקטב מסייע לבניית אמון סביב מערכת המשפט.",
+      "אפשר לבצע שינוי מוסדי עמוק בלי לבחון השלכות רוחב.",
+      "משילות וזכויות יסוד הן מטרות סותרות שאי אפשר לאזן ביניהן.",
+    ],
+  },
+];
+
+const EDUCATION_DEPARTMENT_TOPIC_CONFIG = {
+  id: "education_core",
+  title: "אגף חינוך",
+  shortTitle: "חינוך אזרחי ודמוקרטי",
+  category: "פעילות ציבורית",
+  kind: "activity",
+  date: "2026-02-09",
+  learn:
+    "המשחק של אגף החינוך מתמקד בעקרונות יסוד של אזרחות פעילה, דמוקרטיה, אחריות ציבורית ושלטון חוק.",
+  facts: [
+    "אזרחות פעילה כוללת מעורבות, ביקורת ושיח מכבד.",
+    "שלטון החוק מחייב שכל גורם ציבורי כפוף לאותם כללים.",
+    "שקיפות ציבורית מאפשרת לתלמידים לבחון החלטות שלטוניות באופן ביקורתי.",
+    "חשיבה ביקורתית דורשת בדיקת עובדות מכמה מקורות אמינים.",
+    "זכויות אדם מחייבות גם אחריות כלפי זכויות הזולת.",
+    "דיאלוג דמוקרטי כולל הקשבה לעמדות שונות גם במחלוקת.",
+    "הבחנה בין עובדה לדעה היא מיומנות יסוד בחינוך אזרחי.",
+    "השתתפות תלמידים ביוזמות קהילתיות מחזקת תחושת שייכות.",
+    "מנהל תקין נשען על נהלים ברורים ובקרה מתמדת.",
+    "כיבוד מוסדות המדינה חשוב לצד ביקורת עניינית על פעולתם.",
+    "דיון ערכי איכותי מבוסס טיעון ולא התקפה אישית.",
+    "מעקב אחרי יישום החלטות ציבוריות הוא חלק מחינוך לאחריות.",
+    "דמוקרטיה יציבה נשענת על אמון, שקיפות ואכיפת כללים.",
+    "הבנת תהליכי קבלת החלטות משפרת מעורבות אזרחית מושכלת.",
+    "חינוך לערכים משלב ידע, מיומנויות ופעולה מעשית בקהילה.",
+  ],
+  distractors: [
+    "אזרחות פעילה מסתכמת רק בצפייה מהצד ללא מעורבות.",
+    "שלטון החוק חל רק על חלק מהציבור לפי נסיבות פוליטיות.",
+    "אין צורך לבדוק מקורות אם המידע כתוב בביטחון.",
+    "שיח דמוקרטי מחייב ניצחון בוויכוח ולא הקשבה.",
+    "זכויות אדם עומדות מעל כל אחריות חברתית.",
+    "שקיפות אינה חשובה במוסדות ציבור כל עוד יש הנהלה.",
+    "אפשר להחליף טיעונים אישיים במקום דיון עובדתי.",
+    "מנהל תקין אינו דורש נהלים או בקרה קבועה.",
+    "מעורבות קהילתית אינה קשורה לחינוך אזרחי.",
+    "אמון ציבורי לא מושפע מאכיפת כללים או שקיפות.",
+    "דמוקרטיה יציבה אינה תלויה בהבנת תהליכי קבלת החלטות.",
+    "חינוך לערכים הוא תיאורטי בלבד ללא יישום מעשי.",
+  ],
+};
 
 const BASE_QUESTIONS = [
   {
@@ -762,6 +956,18 @@ const BASE_QUESTIONS = [
   },
 ];
 
+const TELEMARKETING_ACTIVITY_TOPICS = TELEMARKETING_ACTIVITY_TOPIC_CONFIGS.map((item) => ({
+  id: item.id,
+  title: item.title,
+  shortTitle: item.shortTitle,
+}));
+const TELEMARKETING_ACTIVITY_TOPIC_BY_ID = TELEMARKETING_ACTIVITY_TOPICS.reduce((acc, item) => {
+  acc[item.id] = item;
+  return acc;
+}, {});
+const TELEMARKETING_ACTIVITY_QUESTIONS_BY_TOPIC = buildTelemarketingActivityQuestionPools();
+const EDUCATION_DEPARTMENT_QUESTIONS = buildGeneratedTopicQuestions(EDUCATION_DEPARTMENT_TOPIC_CONFIG, 30);
+
 const BASE_QUESTION_CONTENT_AUDIT = auditQuestionBankContent(BASE_QUESTIONS);
 if (BASE_QUESTION_CONTENT_AUDIT.totalIssues > 0) {
   console.warn(
@@ -781,7 +987,9 @@ const screenIds = [
 ];
 
 const gameState = {
-  quickMode: "regular",
+  quickMode: QUICK_MODES.REGULAR,
+  entryDepartment: "",
+  activityTopic: TELEMARKETING_ACTIVITY_TOPICS[0]?.id || "oct7",
   playerName: "",
   questions: [],
   index: 0,
@@ -828,12 +1036,25 @@ const dom = {
   musicLevelText: document.getElementById("musicLevelText"),
   newGameAnytimeBtn: document.getElementById("newGameAnytimeBtn"),
   homeAnytimeBtn: document.getElementById("homeAnytimeBtn"),
+  chooseTelemarketingBtn: document.getElementById("chooseTelemarketingBtn"),
+  chooseEducationBtn: document.getElementById("chooseEducationBtn"),
+  entryTelemarketingCard: document.getElementById("entryTelemarketingCard"),
+  entryEducationCard: document.getElementById("entryEducationCard"),
+  entryModesWrap: document.getElementById("entryModesWrap"),
+  entrySeasonalCard: document.getElementById("entrySeasonalCard"),
+  entryActivityCard: document.getElementById("entryActivityCard"),
+  entryDepartmentState: document.getElementById("entryDepartmentState"),
+  entryDepartmentMsg: document.getElementById("entryDepartmentMsg"),
   goQuickBtn: document.getElementById("goQuickBtn"),
   goSeasonalQuickBtn: document.getElementById("goSeasonalQuickBtn"),
+  goActivityQuickBtn: document.getElementById("goActivityQuickBtn"),
   goAdminBtn: document.getElementById("goAdminBtn"),
+  quickSetupTitle: document.getElementById("quickSetupTitle"),
   quickModeNote: document.getElementById("quickModeNote"),
   playerNameInput: document.getElementById("playerNameInput"),
   questionCountSelect: document.getElementById("questionCountSelect"),
+  activityTopicField: document.getElementById("activityTopicField"),
+  activityTopicSelect: document.getElementById("activityTopicSelect"),
   showLearningToggle: document.getElementById("showLearningToggle"),
   startQuickBtn: document.getElementById("startQuickBtn"),
   quickSetupError: document.getElementById("quickSetupError"),
@@ -888,6 +1109,7 @@ const dom = {
   resetQuestionCyclesPublicBtn: document.getElementById("resetQuestionCyclesPublicBtn"),
   questionCycleResetMsg: document.getElementById("questionCycleResetMsg"),
   openQuestionBankBtn: document.getElementById("openQuestionBankBtn"),
+  openAdminManagersBtn: document.getElementById("openAdminManagersBtn"),
   backToAdminMainBtn: document.getElementById("backToAdminMainBtn"),
   adminMainSections: document.getElementById("adminMainSections"),
   adminQuestionBankSection: document.getElementById("adminQuestionBankSection"),
@@ -920,6 +1142,7 @@ const dom = {
   generateLongTextDraftsBtn: document.getElementById("generateLongTextDraftsBtn"),
   approveAllTextDraftsBtn: document.getElementById("approveAllTextDraftsBtn"),
   longTextMsg: document.getElementById("longTextMsg"),
+  longTextTopicTitle: document.getElementById("longTextTopicTitle"),
   longTextDraftsPreview: document.getElementById("longTextDraftsPreview"),
   questionCountExact: document.getElementById("questionCountExact"),
   questionSearchInput: document.getElementById("questionSearchInput"),
@@ -937,6 +1160,7 @@ const dom = {
   questionAuditResults: document.getElementById("questionAuditResults"),
   allQuestionsList: document.getElementById("allQuestionsList"),
   learningInsightsSummary: document.getElementById("learningInsightsSummary"),
+  learningAlertsList: document.getElementById("learningAlertsList"),
   questionDifficultyList: document.getElementById("questionDifficultyList"),
   learningRecommendationsList: document.getElementById("learningRecommendationsList"),
   adminTabButtons: Array.from(document.querySelectorAll("[data-admin-tab-target]")),
@@ -948,7 +1172,8 @@ const backendConfig = resolveBackendConfig();
 ensureAdminUsersSeeded();
 bindEvents();
 setDefaultDateFields();
-setQuickMode("regular");
+setQuickMode(QUICK_MODES.REGULAR);
+setEntryDepartment("");
 showScreen("screenLanding");
 updateTimerUI(QUESTION_TIMEOUT_SECONDS);
 dom.hourglassIcon.style.animationPlayState = "paused";
@@ -981,20 +1206,36 @@ function bindEvents() {
     ensureMusicPlayback();
   });
 
-  dom.goQuickBtn.addEventListener("click", () => {
-    hideMessage(dom.quickSetupError);
-    setQuickMode("regular");
-    hideMessage(dom.questionCycleResetMsg);
-    showScreen("screenQuickSetup");
+  dom.chooseTelemarketingBtn?.addEventListener("click", () => {
+    setEntryDepartment(ENTRY_DEPARTMENTS.TELEMARKETING);
     ensureMusicPlayback();
   });
 
-  dom.goSeasonalQuickBtn.addEventListener("click", () => {
-    hideMessage(dom.quickSetupError);
-    setQuickMode("seasonal");
-    hideMessage(dom.questionCycleResetMsg);
-    showScreen("screenQuickSetup");
+  dom.chooseEducationBtn?.addEventListener("click", () => {
+    setEntryDepartment(ENTRY_DEPARTMENTS.EDUCATION);
     ensureMusicPlayback();
+  });
+
+  dom.goQuickBtn?.addEventListener("click", () => {
+    openQuickSetupByMode(QUICK_MODES.REGULAR);
+    ensureMusicPlayback();
+  });
+
+  dom.goSeasonalQuickBtn?.addEventListener("click", () => {
+    openQuickSetupByMode(QUICK_MODES.SEASONAL);
+    ensureMusicPlayback();
+  });
+
+  dom.goActivityQuickBtn?.addEventListener("click", () => {
+    openQuickSetupByMode(QUICK_MODES.ACTIVITY);
+    ensureMusicPlayback();
+  });
+
+  dom.activityTopicSelect?.addEventListener("change", () => {
+    gameState.activityTopic = normalizeActivityTopicId(dom.activityTopicSelect.value);
+    if (normalizeQuickMode(gameState.quickMode) === QUICK_MODES.ACTIVITY) {
+      setQuickMode(QUICK_MODES.ACTIVITY);
+    }
   });
 
   dom.goAdminBtn.addEventListener("click", () => {
@@ -1102,6 +1343,7 @@ function bindEvents() {
     hideMessage(dom.adminUserFormMsg);
     hideMessage(dom.adminPasswordFormMsg);
     hideMessage(dom.longTextMsg);
+    clearLongTextTopicTitle();
     hideDraftQueueMessage();
     setAdminMode("main");
     stopQuestionTimer();
@@ -1113,6 +1355,12 @@ function bindEvents() {
     dom.openQuestionBankBtn.addEventListener("click", () => {
       setAdminMode("questionBank");
       renderAllQuestionsManager();
+    });
+  }
+
+  if (dom.openAdminManagersBtn) {
+    dom.openAdminManagersBtn.addEventListener("click", () => {
+      setAdminTab("security");
     });
   }
 
@@ -1202,8 +1450,25 @@ function bindEvents() {
   dom.adminPasswordForm.addEventListener("submit", handleOwnPasswordChange);
   dom.longTextFileInput.addEventListener("change", handleLongTextFileUpload);
   dom.longTextInput.addEventListener("input", markLongTextAsChangedAfterAnalysis);
-  dom.analyzeLongTextBtn.addEventListener("click", analyzeLongTextInput);
-  dom.generateLongTextDraftsBtn.addEventListener("click", generateDraftsFromLongTextInput);
+  dom.longTextInput.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) {
+      return;
+    }
+
+    const longTextValue = normalizeLongTextInput(dom.longTextInput.value);
+    if (longTextValue.length < LONG_TEXT_MIN_CHARS) {
+      return;
+    }
+
+    event.preventDefault();
+    analyzeLongTextInput({ autoSuggest: true });
+  });
+  dom.analyzeLongTextBtn.addEventListener("click", () => {
+    analyzeLongTextInput({ autoSuggest: true });
+  });
+  dom.generateLongTextDraftsBtn.addEventListener("click", () => {
+    generateDraftsFromLongTextInput({ replacePreviousBatch: true });
+  });
   dom.approveAllTextDraftsBtn.addEventListener("click", approveAllLongTextDrafts);
   dom.questionSearchInput.addEventListener("input", () => {
     renderAllQuestionsManager();
@@ -1262,7 +1527,9 @@ function resetQuestionCyclesFlow() {
 
   const savedQuestions = writeStorage(STORAGE_KEYS.questionCycleUsedIds, []);
   const savedFamilies = writeStorage(STORAGE_KEYS.familyCycleUsedIds, []);
-  if (!savedQuestions || !savedFamilies) {
+  const savedScopedQuestions = writeStorage(STORAGE_KEYS.questionCycleByScope, {});
+  const savedScopedFamilies = writeStorage(STORAGE_KEYS.familyCycleByScope, {});
+  if (!savedQuestions || !savedFamilies || !savedScopedQuestions || !savedScopedFamilies) {
     showMessage(
       dom.questionCycleResetMsg,
       "האיפוס נכשל בגלל מגבלת אחסון בדפדפן.",
@@ -1306,6 +1573,13 @@ function showScreen(screenId) {
 
   const hideMusicControls = screenId === "screenAdminPanel" || screenId === "screenAdminLogin";
   dom.musicControls.classList.toggle("hidden", hideMusicControls);
+
+  if (screenId === "screenLanding") {
+    updateLandingModeCards();
+    if (dom.entryDepartmentMsg) {
+      hideMessage(dom.entryDepartmentMsg);
+    }
+  }
 }
 
 function resolveScreenId(shortName) {
@@ -1415,16 +1689,28 @@ function startQuickGame() {
     return;
   }
 
-  const isSeasonal = gameState.quickMode === "seasonal";
-  const questionPool = isSeasonal
-    ? getSeasonalPlayableQuestions()
-    : getPlayableQuestions();
+  const department = normalizeEntryDepartment(gameState.entryDepartment);
+  if (!department) {
+    showMessage(dom.quickSetupError, "יש לבחור קודם אגף במסך הכניסה.", false);
+    return;
+  }
+
+  const quickMode = normalizeQuickMode(gameState.quickMode);
+  const activityTopicId = getCurrentActivityTopicId();
+  gameState.activityTopic = activityTopicId;
+
+  const questionPool = getGameQuestionPoolByContext();
   if (!questionPool.length) {
+    const activityTopicTitle = TELEMARKETING_ACTIVITY_TOPIC_BY_ID[activityTopicId]?.title || "הנושא שנבחר";
     showMessage(
       dom.quickSetupError,
-      isSeasonal
-        ? "אין כרגע שאלות זמינות במצב עונתי (מאוקטובר 2025 ומעלה)."
-        : "אין כרגע שאלות זמינות במאגר.",
+      department === ENTRY_DEPARTMENTS.EDUCATION
+        ? "אין כרגע שאלות זמינות למסלול אגף חינוך."
+        : quickMode === QUICK_MODES.SEASONAL
+          ? "אין כרגע שאלות זמינות במצב עונתי (מאוקטובר 2025 ומעלה)."
+          : quickMode === QUICK_MODES.ACTIVITY
+            ? `אין כרגע שאלות זמינות למשחק על פי פעילות בנושא "${activityTopicTitle}".`
+            : "אין כרגע שאלות זמינות במאגר.",
       false,
     );
     return;
@@ -1432,7 +1718,12 @@ function startQuickGame() {
 
   const countValue = dom.questionCountSelect.value;
   const count = countValue === "all" ? questionPool.length : Number(countValue);
-  const gameQuestions = pickGameQuestions(questionPool, Math.min(count, questionPool.length));
+  const cycleScope = buildCycleScopeKey();
+  const gameQuestions = pickGameQuestions(
+    questionPool,
+    Math.min(count, questionPool.length),
+    cycleScope,
+  );
 
   gameState.playerName = playerName;
   gameState.questions = gameQuestions;
@@ -1455,7 +1746,8 @@ function startQuickGame() {
   renderQuestion();
 }
 
-function pickGameQuestions(questionPool, count) {
+function pickGameQuestions(questionPool, count, scopeKey = "default") {
+  const safeScope = normalizeSpace(scopeKey) || "default";
   const targetCount = Math.min(questionPool.length, Math.max(1, Number(count) || 1));
   const families = groupQuestionsByFamily(questionPool);
   const familyKeys = Array.from(families.keys());
@@ -1463,12 +1755,18 @@ function pickGameQuestions(questionPool, count) {
     .map((question) => String(question?.id || "").trim())
     .filter(Boolean);
 
-  let usedQuestionIds = readCycleSet(STORAGE_KEYS.questionCycleUsedIds, allQuestionIds);
+  let usedQuestionIds = readCycleSetByScope(STORAGE_KEYS.questionCycleByScope, safeScope, allQuestionIds);
+  if (!usedQuestionIds.size) {
+    usedQuestionIds = readCycleSet(STORAGE_KEYS.questionCycleUsedIds, allQuestionIds);
+  }
   if (usedQuestionIds.size >= questionPool.length) {
     usedQuestionIds = new Set();
   }
 
-  let usedFamilyIds = readCycleSet(STORAGE_KEYS.familyCycleUsedIds, familyKeys);
+  let usedFamilyIds = readCycleSetByScope(STORAGE_KEYS.familyCycleByScope, safeScope, familyKeys);
+  if (!usedFamilyIds.size) {
+    usedFamilyIds = readCycleSet(STORAGE_KEYS.familyCycleUsedIds, familyKeys);
+  }
   if (usedFamilyIds.size >= familyKeys.length) {
     usedFamilyIds = new Set();
   }
@@ -1536,15 +1834,25 @@ function pickGameQuestions(questionPool, count) {
   selected.forEach((question) => {
     usedQuestionIds.add(question.id);
   });
-  writeStorage(STORAGE_KEYS.questionCycleUsedIds, Array.from(usedQuestionIds));
+  writeCycleSetByScope(STORAGE_KEYS.questionCycleByScope, safeScope, usedQuestionIds);
+  if (safeScope === "telemarketing_regular") {
+    writeStorage(STORAGE_KEYS.questionCycleUsedIds, Array.from(usedQuestionIds));
+  }
 
   selectedFamilies.forEach((family) => {
     usedFamilyIds.add(family);
   });
-  writeStorage(
-    STORAGE_KEYS.familyCycleUsedIds,
+  writeCycleSetByScope(
+    STORAGE_KEYS.familyCycleByScope,
+    safeScope,
     Array.from(usedFamilyIds).slice(-Math.max(1, familyKeys.length)),
   );
+  if (safeScope === "telemarketing_regular") {
+    writeStorage(
+      STORAGE_KEYS.familyCycleUsedIds,
+      Array.from(usedFamilyIds).slice(-Math.max(1, familyKeys.length)),
+    );
+  }
 
   return selected;
 }
@@ -1588,6 +1896,29 @@ function readCycleSet(storageKey, allowedValues) {
     .map((value) => String(value || "").trim())
     .filter((value) => allowed.has(value));
   return new Set(filtered);
+}
+
+function readCycleSetByScope(storageKey, scopeKey, allowedValues) {
+  const safeScope = normalizeSpace(scopeKey) || "default";
+  const scopedMap = readObjectStorage(storageKey, {});
+  const scopedRaw = Array.isArray(scopedMap?.[safeScope]) ? scopedMap[safeScope] : [];
+  const allowed = new Set(
+    (allowedValues || [])
+      .map((value) => String(value || "").trim())
+      .filter(Boolean),
+  );
+  const filtered = scopedRaw
+    .map((value) => String(value || "").trim())
+    .filter((value) => allowed.has(value));
+  return new Set(filtered);
+}
+
+function writeCycleSetByScope(storageKey, scopeKey, values) {
+  const safeScope = normalizeSpace(scopeKey) || "default";
+  const scopedMap = readObjectStorage(storageKey, {});
+  const nextValues = Array.isArray(values) ? values : Array.from(values || []);
+  scopedMap[safeScope] = nextValues.map((value) => String(value || "").trim()).filter(Boolean);
+  return writeStorage(storageKey, scopedMap);
 }
 
 function renderQuestion() {
@@ -2181,6 +2512,118 @@ function buildSingleQuestionVariant(questionText, prefixText) {
   return `${prefix} ${withQuestionMark}`.replace(/\s+/g, " ").trim();
 }
 
+function buildTelemarketingActivityQuestionPools() {
+  const output = {};
+  TELEMARKETING_ACTIVITY_TOPIC_CONFIGS.forEach((topicConfig) => {
+    output[topicConfig.id] = buildGeneratedTopicQuestions(topicConfig, 30);
+  });
+  return output;
+}
+
+function buildGeneratedTopicQuestions(config, totalQuestions) {
+  const count = Math.max(1, Number(totalQuestions) || 1);
+  const facts = (config?.facts || []).map((item) => normalizeSpace(item)).filter(Boolean);
+  const distractorPool = (config?.distractors || []).map((item) => normalizeSpace(item)).filter(Boolean);
+  const stems = GENERATED_TOPIC_STEMS.slice();
+  const topicTitle = normalizeSpace(config?.shortTitle || config?.title || "הנושא");
+  const learnText = normalizeSpace(config?.learn) || `רקע לנושא: ${topicTitle}`;
+  const baseCategory = normalizeSpace(config?.category) || "פעילות ציבורית";
+  const baseKind = normalizeSpace(config?.kind) || "activity";
+  const baseDate = normalizeSpace(config?.date) || "2026-02-09";
+  const idPrefix = normalizeSpace(config?.id) || "topic";
+
+  if (facts.length < 4) {
+    return [];
+  }
+
+  const rows = [];
+  for (let i = 0; i < count; i += 1) {
+    const fact = facts[i % facts.length];
+    const stem = stems[i % stems.length];
+    const question = `${stem.replace("{topic}", topicTitle)} (שאלה ממוקדת ${i + 1})`;
+    const options = buildGeneratedQuestionOptions(fact, facts, distractorPool, i);
+    const answer = options.indexOf(fact);
+    if (answer < 0) {
+      continue;
+    }
+
+    rows.push({
+      id: `${idPrefix}_${String(i + 1).padStart(2, "0")}`,
+      category: baseCategory,
+      kind: baseKind,
+      date: baseDate,
+      learn: learnText,
+      question,
+      options,
+      answer,
+      explanation: `${fact} זהו הדגש המרכזי שנדרש לזכור בנושא ${topicTitle}.`,
+      sources: [],
+    });
+  }
+
+  return rows;
+}
+
+function buildGeneratedQuestionOptions(correctFact, facts, distractorPool, indexSeed) {
+  const uniqueSource = new Set();
+  const combined = [...distractorPool, ...facts];
+  combined.forEach((item) => {
+    const safe = normalizeSpace(item);
+    if (!safe || safe === correctFact) {
+      return;
+    }
+    uniqueSource.add(safe);
+  });
+
+  const fallback = Array.from(uniqueSource);
+  const distractors = [];
+  for (let i = 0; i < fallback.length && distractors.length < 3; i += 1) {
+    const target = fallback[(indexSeed + i * 3) % fallback.length];
+    if (!target || distractors.includes(target)) {
+      continue;
+    }
+    distractors.push(target);
+  }
+
+  while (distractors.length < 3) {
+    distractors.push(`הניסוח הזה לא מייצג את העמדה המרכזית (${distractors.length + 1}).`);
+  }
+
+  const withCorrect = [correctFact, ...distractors.slice(0, 3)];
+  const rotation = indexSeed % withCorrect.length;
+  return withCorrect.map((_, idx) => withCorrect[(idx + rotation) % withCorrect.length]);
+}
+
+function normalizeEntryDepartment(value) {
+  const safe = normalizeSpace(value).toLowerCase();
+  if (safe === ENTRY_DEPARTMENTS.EDUCATION || safe.includes("education")) {
+    return ENTRY_DEPARTMENTS.EDUCATION;
+  }
+  if (safe === ENTRY_DEPARTMENTS.TELEMARKETING || safe.includes("telemarketing")) {
+    return ENTRY_DEPARTMENTS.TELEMARKETING;
+  }
+  return "";
+}
+
+function normalizeQuickMode(value) {
+  const safe = normalizeSpace(value).toLowerCase();
+  if (safe === QUICK_MODES.SEASONAL) {
+    return QUICK_MODES.SEASONAL;
+  }
+  if (safe === QUICK_MODES.ACTIVITY) {
+    return QUICK_MODES.ACTIVITY;
+  }
+  return QUICK_MODES.REGULAR;
+}
+
+function normalizeActivityTopicId(value) {
+  const safe = normalizeSpace(value).toLowerCase();
+  if (TELEMARKETING_ACTIVITY_TOPIC_BY_ID[safe]) {
+    return safe;
+  }
+  return TELEMARKETING_ACTIVITY_TOPICS[0]?.id || "oct7";
+}
+
 function getPlayableQuestions() {
   const { activeQuestions } = getQuestionInventory();
   return activeQuestions.filter((question) => {
@@ -2200,9 +2643,159 @@ function getSeasonalPlayableQuestions() {
   return getPlayableQuestions().filter((question) => question.date >= SEASONAL_MIN_DATE);
 }
 
+function getEducationDepartmentQuestions() {
+  return EDUCATION_DEPARTMENT_QUESTIONS.slice();
+}
+
+function getTelemarketingActivityQuestions(topicId) {
+  const safeTopic = normalizeActivityTopicId(topicId);
+  const rows = TELEMARKETING_ACTIVITY_QUESTIONS_BY_TOPIC[safeTopic];
+  return Array.isArray(rows) ? rows.slice() : [];
+}
+
+function getCurrentActivityTopicId() {
+  return normalizeActivityTopicId(dom.activityTopicSelect?.value || gameState.activityTopic);
+}
+
+function getGameQuestionPoolByContext() {
+  const department = normalizeEntryDepartment(gameState.entryDepartment);
+  const quickMode = normalizeQuickMode(gameState.quickMode);
+
+  if (department === ENTRY_DEPARTMENTS.EDUCATION) {
+    return getEducationDepartmentQuestions();
+  }
+
+  if (quickMode === QUICK_MODES.ACTIVITY) {
+    return getTelemarketingActivityQuestions(getCurrentActivityTopicId());
+  }
+
+  if (quickMode === QUICK_MODES.SEASONAL) {
+    return getSeasonalPlayableQuestions();
+  }
+
+  return getPlayableQuestions();
+}
+
+function buildCycleScopeKey() {
+  const department = normalizeEntryDepartment(gameState.entryDepartment) || ENTRY_DEPARTMENTS.TELEMARKETING;
+  const quickMode = normalizeQuickMode(gameState.quickMode);
+  if (department === ENTRY_DEPARTMENTS.EDUCATION) {
+    return "education_regular";
+  }
+  if (quickMode === QUICK_MODES.ACTIVITY) {
+    return `telemarketing_activity_${getCurrentActivityTopicId()}`;
+  }
+  if (quickMode === QUICK_MODES.SEASONAL) {
+    return "telemarketing_seasonal";
+  }
+  return "telemarketing_regular";
+}
+
+function updateLandingModeCards() {
+  const department = normalizeEntryDepartment(gameState.entryDepartment);
+  if (dom.entryModesWrap) {
+    dom.entryModesWrap.classList.toggle("hidden", !department);
+  }
+  if (dom.entryDepartmentState) {
+    if (!department) {
+      dom.entryDepartmentState.textContent = "בחר אגף כדי להמשיך לבחירת סוג משחק.";
+    } else if (department === ENTRY_DEPARTMENTS.EDUCATION) {
+      dom.entryDepartmentState.textContent = "נבחר אגף חינוך. זמין כעת: משחק מהיר ייעודי.";
+    } else {
+      dom.entryDepartmentState.textContent = "נבחר טלמרקטינג. זמינים: מהיר, עונתי, ומשחק על פי פעילות.";
+    }
+  }
+  if (dom.entrySeasonalCard) {
+    dom.entrySeasonalCard.classList.toggle("hidden", department === ENTRY_DEPARTMENTS.EDUCATION);
+  }
+  if (dom.entryActivityCard) {
+    dom.entryActivityCard.classList.toggle("hidden", department === ENTRY_DEPARTMENTS.EDUCATION);
+  }
+  if (dom.entryTelemarketingCard) {
+    dom.entryTelemarketingCard.classList.toggle("selected", department === ENTRY_DEPARTMENTS.TELEMARKETING);
+  }
+  if (dom.entryEducationCard) {
+    dom.entryEducationCard.classList.toggle("selected", department === ENTRY_DEPARTMENTS.EDUCATION);
+  }
+  if (dom.goQuickBtn) {
+    dom.goQuickBtn.textContent = department === ENTRY_DEPARTMENTS.EDUCATION
+      ? "למשחק מהיר - אגף חינוך"
+      : "למשחק מהיר";
+  }
+}
+
+function setEntryDepartment(department) {
+  const nextDepartment = normalizeEntryDepartment(department);
+  gameState.entryDepartment = nextDepartment;
+  if (dom.entryDepartmentMsg) {
+    hideMessage(dom.entryDepartmentMsg);
+  }
+  if (nextDepartment === ENTRY_DEPARTMENTS.EDUCATION && normalizeQuickMode(gameState.quickMode) !== QUICK_MODES.REGULAR) {
+    gameState.quickMode = QUICK_MODES.REGULAR;
+  }
+  updateLandingModeCards();
+  setQuickMode(gameState.quickMode);
+}
+
+function openQuickSetupByMode(mode) {
+  const department = normalizeEntryDepartment(gameState.entryDepartment);
+  if (!department) {
+    showMessage(dom.entryDepartmentMsg, "יש לבחור קודם אגף (טלמרקטינג או אגף חינוך).", false);
+    return;
+  }
+
+  const quickMode = normalizeQuickMode(mode);
+  if (department === ENTRY_DEPARTMENTS.EDUCATION && quickMode !== QUICK_MODES.REGULAR) {
+    showMessage(dom.entryDepartmentMsg, "באגף חינוך זמין כרגע משחק מהיר ייעודי.", false);
+    return;
+  }
+
+  hideMessage(dom.entryDepartmentMsg);
+  hideMessage(dom.quickSetupError);
+  hideMessage(dom.questionCycleResetMsg);
+  setQuickMode(quickMode);
+  showScreen("screenQuickSetup");
+}
+
 function setQuickMode(mode) {
-  gameState.quickMode = mode === "seasonal" ? "seasonal" : "regular";
-  if (gameState.quickMode === "seasonal") {
+  gameState.quickMode = normalizeQuickMode(mode);
+  const department = normalizeEntryDepartment(gameState.entryDepartment);
+
+  if (dom.quickSetupTitle) {
+    if (department === ENTRY_DEPARTMENTS.EDUCATION) {
+      dom.quickSetupTitle.textContent = "משחק מהיר - אגף חינוך";
+    } else if (gameState.quickMode === QUICK_MODES.SEASONAL) {
+      dom.quickSetupTitle.textContent = "משחק מהיר עונתי - טלמרקטינג";
+    } else if (gameState.quickMode === QUICK_MODES.ACTIVITY) {
+      dom.quickSetupTitle.textContent = "משחק על פי פעילות - טלמרקטינג";
+    } else {
+      dom.quickSetupTitle.textContent = "משחק מהיר - טלמרקטינג";
+    }
+  }
+
+  if (dom.activityTopicField) {
+    dom.activityTopicField.classList.toggle("hidden", gameState.quickMode !== QUICK_MODES.ACTIVITY);
+  }
+
+  if (gameState.quickMode === QUICK_MODES.ACTIVITY) {
+    const safeTopic = getCurrentActivityTopicId();
+    gameState.activityTopic = safeTopic;
+    if (dom.activityTopicSelect) {
+      dom.activityTopicSelect.value = safeTopic;
+    }
+    if (dom.questionCountSelect) {
+      dom.questionCountSelect.value = "30";
+    }
+    dom.quickModeNote.textContent = `מצב פעילות ממוקד: ${TELEMARKETING_ACTIVITY_TOPIC_BY_ID[safeTopic]?.title || ""}.`;
+    return;
+  }
+
+  if (department === ENTRY_DEPARTMENTS.EDUCATION) {
+    dom.quickModeNote.textContent = "מצב אגף חינוך: מאגר שאלות ייעודי לאגף החינוך.";
+    return;
+  }
+
+  if (gameState.quickMode === QUICK_MODES.SEASONAL) {
     dom.quickModeNote.textContent = "מצב עונתי: רק שאלות מאוקטובר 2025 ומעלה.";
   } else {
     dom.quickModeNote.textContent = "מצב רגיל: כלל המאגר הפעיל (2025+ והישגים מאושרים).";
@@ -3005,6 +3598,11 @@ function openAdminPanel() {
   renderDrafts();
   renderCustomQuestions();
   renderLongTextDraftsPreview();
+  if (adminState.longTextAnalysis) {
+    setLongTextTopicTitle(adminState.longTextAnalysis);
+  } else {
+    clearLongTextTopicTitle();
+  }
   renderQuestionAuditReport();
   dom.adminPasswordForm.reset();
   hideMessage(dom.activityFormMsg);
@@ -3110,6 +3708,9 @@ function renderAttemptsTable() {
 function renderLearningMetrics() {
   const attempts = readStorage(STORAGE_KEYS.attempts, []);
   dom.learningMetricsList.innerHTML = "";
+  if (dom.learningAlertsList) {
+    dom.learningAlertsList.innerHTML = "";
+  }
   if (dom.questionDifficultyList) {
     dom.questionDifficultyList.innerHTML = "";
   }
@@ -3231,13 +3832,14 @@ function renderLearningMetrics() {
   }
 
   const questionRows = buildQuestionLearningRows(attempts);
+  const alertCount = renderLearningAlertsPanel(categoryRows, questionRows, attempts.length);
   renderQuestionDifficultyList(questionRows);
   renderLearningRecommendationsPanel(categoryRows, questionRows, attempts.length);
 
   if (dom.learningInsightsSummary) {
     const trackedQuestions = questionRows.filter((item) => item.total >= 2).length;
     dom.learningInsightsSummary.textContent =
-      `משחקים נותחו: ${attempts.length} | שאלות עם מדגם מספיק: ${trackedQuestions} | קטגוריות פעילות: ${categoryRows.length}`;
+      `משחקים נותחו: ${attempts.length} | שאלות עם מדגם מספיק: ${trackedQuestions} | קטגוריות פעילות: ${categoryRows.length} | התראות פעילות: ${alertCount}`;
   }
 }
 
@@ -3437,6 +4039,76 @@ function renderLearningRecommendationsPanel(categoryRows, questionRows, attemptC
     card.appendChild(line);
     dom.learningRecommendationsList.appendChild(card);
   });
+}
+
+function renderLearningAlertsPanel(categoryRows, questionRows, attemptCount) {
+  if (!dom.learningAlertsList) {
+    return 0;
+  }
+
+  dom.learningAlertsList.innerHTML = "";
+  const alerts = [];
+
+  if (attemptCount < 4) {
+    alerts.push({
+      level: "warn",
+      text: "מדגם קטן: מומלץ לצבור לפחות 4 משחקים כדי לקבל התרעות יציבות יותר.",
+    });
+  }
+
+  const weakCategories = (categoryRows || [])
+    .filter((row) => row.total >= 4 && (row.accuracy <= 58 || row.timeoutRate >= 28))
+    .slice(0, 3);
+  weakCategories.forEach((row) => {
+    alerts.push({
+      level: row.accuracy <= 52 ? "high" : "warn",
+      text: `התראת נושא: בקטגוריית "${row.category}" יש דיוק ${row.accuracy}% ופקיעות זמן ${row.timeoutRate}% (מדגם ${row.total}).`,
+    });
+  });
+
+  const weakQuestions = (questionRows || [])
+    .filter((row) => row.total >= 3 && (row.failRate >= 50 || row.timeoutRate >= 32))
+    .slice(0, 4);
+  weakQuestions.forEach((row) => {
+    alerts.push({
+      level: row.failRate >= 60 ? "high" : "warn",
+      text: `התראת שאלה: "${clampText(row.question, 78)}" עם נפילות ${row.failRate}% ופקיעות זמן ${row.timeoutRate}% (מדגם ${row.total}).`,
+    });
+  });
+
+  if (!alerts.length) {
+    dom.learningAlertsList.appendChild(
+      makeInfoMessage("אין כרגע התראות חריגות. הביצועים יציבים ביחס לנתונים שנאספו."),
+    );
+    return 0;
+  }
+
+  alerts.slice(0, 8).forEach((alert) => {
+    const card = document.createElement("article");
+    card.className = `info-card learning-alert-card ${alert.level}`;
+
+    const header = document.createElement("div");
+    header.className = "section-head";
+
+    const title = document.createElement("h4");
+    title.textContent = alert.level === "high" ? "התראה גבוהה" : "התראת מעקב";
+
+    const badge = document.createElement("span");
+    badge.className = `badge ${alert.level === "high" ? "audit-level bad" : "audit-level warn"}`;
+    badge.textContent = alert.level === "high" ? "חשוב" : "שים לב";
+
+    header.appendChild(title);
+    header.appendChild(badge);
+
+    const line = document.createElement("p");
+    line.textContent = alert.text;
+
+    card.appendChild(header);
+    card.appendChild(line);
+    dom.learningAlertsList.appendChild(card);
+  });
+
+  return alerts.length;
 }
 
 function makeCell(text) {
@@ -5344,6 +6016,7 @@ function markLongTextAsChangedAfterAnalysis() {
   dom.generateLongTextDraftsBtn.disabled = true;
   dom.approveAllTextDraftsBtn.disabled = true;
   hideMessage(dom.longTextMsg);
+  clearLongTextTopicTitle();
   renderLongTextDraftsPreview();
 }
 
@@ -5433,6 +6106,47 @@ function analyzeLongTextContent(text) {
   };
 }
 
+function buildLongTextGeneralTitle(analysis) {
+  const raw = normalizeSpace(
+    analysis?.paragraphs?.[0]
+    || analysis?.facts?.[0]
+    || analysis?.normalizedText,
+  );
+  if (!raw) {
+    return "";
+  }
+
+  const sentence = normalizeSpace(raw.split(/[.!?]/)[0]);
+  const words = sentence.split(" ").filter(Boolean);
+  if (!words.length) {
+    return "";
+  }
+  return clampText(words.slice(0, 12).join(" "), 86);
+}
+
+function setLongTextTopicTitle(analysis) {
+  if (!dom.longTextTopicTitle) {
+    return;
+  }
+
+  const title = buildLongTextGeneralTitle(analysis);
+  if (!title) {
+    clearLongTextTopicTitle();
+    return;
+  }
+
+  dom.longTextTopicTitle.textContent = `נושא כללי שזוהה: ${title}`;
+  dom.longTextTopicTitle.classList.remove("hidden");
+}
+
+function clearLongTextTopicTitle() {
+  if (!dom.longTextTopicTitle) {
+    return;
+  }
+  dom.longTextTopicTitle.textContent = "";
+  dom.longTextTopicTitle.classList.add("hidden");
+}
+
 async function handleLongTextFileUpload(event) {
   const file = event?.target?.files?.[0];
   if (!file) {
@@ -5446,7 +6160,8 @@ async function handleLongTextFileUpload(event) {
     adminState.lastLongTextBatchDraftIds = [];
     dom.generateLongTextDraftsBtn.disabled = true;
     dom.approveAllTextDraftsBtn.disabled = true;
-    showMessage(dom.longTextMsg, `הקובץ "${file.name}" נטען. לחץ על "קרא והבן את הכל".`, true);
+    clearLongTextTopicTitle();
+    showMessage(dom.longTextMsg, `הקובץ "${file.name}" נטען. לחץ Enter או "נתח טקסט והצע 10 שאלות".`, true);
     renderLongTextDraftsPreview();
   } catch (_err) {
     showMessage(dom.longTextMsg, "טעינת קובץ הטקסט נכשלה.", false);
@@ -5455,7 +6170,8 @@ async function handleLongTextFileUpload(event) {
   }
 }
 
-function analyzeLongTextInput() {
+function analyzeLongTextInput(options = {}) {
+  const autoSuggest = options.autoSuggest !== false;
   hideMessage(dom.longTextMsg);
   const normalizedText = normalizeLongTextInput(dom.longTextInput.value);
   if (normalizedText.length < LONG_TEXT_MIN_CHARS) {
@@ -5465,6 +6181,7 @@ function analyzeLongTextInput() {
       false,
     );
     dom.generateLongTextDraftsBtn.disabled = true;
+    clearLongTextTopicTitle();
     return;
   }
 
@@ -5472,18 +6189,30 @@ function analyzeLongTextInput() {
   if (analysis.facts.length < 5) {
     showMessage(dom.longTextMsg, "לא זוהו מספיק עובדות בטקסט. הוסף פרטים ונסה שוב.", false);
     dom.generateLongTextDraftsBtn.disabled = true;
+    clearLongTextTopicTitle();
     return;
   }
 
+  const previousBatchIds = adminState.lastLongTextBatchDraftIds.slice();
   adminState.longTextAnalysis = analysis;
-  adminState.lastLongTextBatchDraftIds = [];
+  setLongTextTopicTitle(analysis);
   dom.generateLongTextDraftsBtn.disabled = false;
   dom.approveAllTextDraftsBtn.disabled = true;
-  showMessage(
-    dom.longTextMsg,
-    `הטקסט נותח בהצלחה: ${analysis.wordsCount} מילים, ${analysis.sentenceCount} משפטים, ${analysis.facts.length} עובדות שמישות.`,
-    true,
-  );
+
+  if (autoSuggest) {
+    if (dom.longTextQuestionCount) {
+      dom.longTextQuestionCount.value = "10";
+    }
+    generateDraftsFromLongTextInput({
+      autoMode: true,
+      replacePreviousBatch: true,
+      replaceBatchIds: previousBatchIds,
+    });
+    return;
+  }
+
+  adminState.lastLongTextBatchDraftIds = [];
+  showMessage(dom.longTextMsg, "הטקסט נותח בהצלחה. ניתן כעת להציע 10 שאלות בלחיצה אחת.", true);
   renderLongTextDraftsPreview();
 }
 
@@ -5653,12 +6382,17 @@ function generateDraftsFromLongTextAnalysis(payload) {
   return { batchId, drafts };
 }
 
-function generateDraftsFromLongTextInput() {
+function generateDraftsFromLongTextInput(options = {}) {
+  const autoMode = Boolean(options.autoMode);
+  const replacePreviousBatch = options.replacePreviousBatch !== false;
+  const replaceBatchIds = Array.isArray(options.replaceBatchIds)
+    ? options.replaceBatchIds
+    : adminState.lastLongTextBatchDraftIds;
   hideMessage(dom.longTextMsg);
 
   const normalizedText = normalizeLongTextInput(dom.longTextInput.value);
   if (!adminState.longTextAnalysis || adminState.longTextAnalysis.normalizedText !== normalizedText) {
-    showMessage(dom.longTextMsg, "יש ללחוץ קודם על 'קרא והבן את הכל' אחרי עדכון הטקסט.", false);
+    showMessage(dom.longTextMsg, "יש לבצע ניתוח לטקסט (Enter או כפתור הניתוח) לפני יצירת שאלות.", false);
     return;
   }
 
@@ -5699,9 +6433,15 @@ function generateDraftsFromLongTextInput() {
 
   const generatedWithWorkflow = generated.drafts.map((draft) => ({
     ...draft,
-    workflowStatus: "draft",
+    workflowStatus: "review",
   }));
-  const existingDrafts = readDraftQueue();
+  const previousBatchIdSet = new Set(
+    replaceBatchIds.map((id) => normalizeSpace(id)).filter(Boolean),
+  );
+  let existingDrafts = readDraftQueue();
+  if (replacePreviousBatch && previousBatchIdSet.size) {
+    existingDrafts = existingDrafts.filter((draft) => !previousBatchIdSet.has(normalizeSpace(draft.id)));
+  }
   const mergedDrafts = [...generatedWithWorkflow, ...existingDrafts].slice(0, 500);
   const saved = writeDraftQueue(mergedDrafts);
   if (!saved) {
@@ -5713,7 +6453,9 @@ function generateDraftsFromLongTextInput() {
   dom.approveAllTextDraftsBtn.disabled = adminState.lastLongTextBatchDraftIds.length === 0;
   showMessage(
     dom.longTextMsg,
-    `נוצרו ${generatedWithWorkflow.length} טיוטות מהטקסט. העבר ל-Review ואז אשר אחת-אחת או בלחיצה מרוכזת.`,
+    autoMode
+      ? `הטקסט נותח, זוהה נושא והוצעו ${generatedWithWorkflow.length} שאלות במצב Review. אפשר לאשר/לדחות או להוסיף את כולן.`
+      : `נוצרו ${generatedWithWorkflow.length} שאלות במצב Review. אפשר לאשר אחת-אחת או להוסיף את כולן למאגר.`,
     true,
   );
 
@@ -5919,7 +6661,7 @@ function renderLongTextDraftsPreview() {
 
   if (adminState.longTextAnalysis?.facts?.length) {
     const info = makeInfoMessage(
-      `הטקסט נותח. זוהו ${adminState.longTextAnalysis.facts.length} עובדות אפשריות ליצירת שאלות. לחץ על "צור שאלות מהטקסט".`,
+      `הטקסט נותח. זוהו ${adminState.longTextAnalysis.facts.length} עובדות אפשריות ליצירת שאלות. לחץ על "רענן הצעת שאלות".`,
     );
     dom.longTextDraftsPreview.appendChild(info);
 
@@ -5943,7 +6685,7 @@ function renderLongTextDraftsPreview() {
   }
 
   dom.longTextDraftsPreview.appendChild(
-    makeInfoMessage("אין עדיין טיוטות מטקסט. הדבק טקסט, לחץ 'קרא והבן את הכל', ואז צור שאלות."),
+    makeInfoMessage("אין עדיין שאלות מוצעות מטקסט. הדבק טקסט ולחץ Enter או 'נתח טקסט והצע 10 שאלות'."),
   );
   dom.approveAllTextDraftsBtn.disabled = true;
 }

@@ -156,6 +156,10 @@ h3 {
   gap: 0.8rem;
 }
 
+.entry-department-grid {
+  margin-top: 0.5rem;
+}
+
 .entry-card {
   background:
     linear-gradient(180deg, #ffffff 0%, #f5f9ff 100%);
@@ -166,6 +170,11 @@ h3 {
   gap: 0.7rem;
 }
 
+.entry-card.selected {
+  border-color: rgba(11, 66, 122, 0.46);
+  box-shadow: 0 10px 24px rgba(7, 45, 87, 0.16);
+}
+
 .entry-card p {
   margin: 0;
   color: var(--muted);
@@ -174,6 +183,12 @@ h3 {
 .admin-entry {
   background:
     linear-gradient(180deg, #fff8f5 0%, #fff4ef 100%);
+}
+
+#entryModesWrap {
+  margin-top: 0.8rem;
+  border-top: 1px dashed var(--line);
+  padding-top: 0.75rem;
 }
 
 .form-grid {
@@ -968,6 +983,24 @@ th {
 
 .learning-card {
   border-width: 1px;
+}
+
+.learning-alert-list {
+  margin-top: 0.5rem;
+}
+
+.learning-alert-card {
+  border-inline-start: 4px solid rgba(175, 116, 0, 0.45);
+  background: linear-gradient(180deg, #fffef8 0%, #fffaf0 100%);
+}
+
+.learning-alert-card.warn {
+  border-inline-start-color: rgba(175, 116, 0, 0.55);
+}
+
+.learning-alert-card.high {
+  border-inline-start-color: rgba(191, 17, 17, 0.5);
+  background: linear-gradient(180deg, #fff8f8 0%, #fff1f1 100%);
 }
 
 .learning-bar {
