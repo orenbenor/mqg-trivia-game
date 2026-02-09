@@ -1,4 +1,4 @@
-const CACHE_NAME = "mqg-trivia-v2-20260209";
+const CACHE_NAME = "mqg-trivia-v3-20260209";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -22,7 +22,12 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS)),
   );
-  self.skipWaiting();
+});
+
+self.addEventListener("message", (event) => {
+  if (event?.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("activate", (event) => {

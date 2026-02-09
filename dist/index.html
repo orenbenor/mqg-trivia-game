@@ -26,6 +26,13 @@
   <body>
     <div class="back-glow glow-a"></div>
     <div class="back-glow glow-b"></div>
+    <div id="appUpdateBanner" class="app-update-banner hidden">
+      <p class="app-update-text">יש גרסה חדשה של המשחק. מומלץ לרענן כדי לקבל את כל העדכונים.</p>
+      <div class="actions-row compact">
+        <button id="appUpdateReloadBtn" class="secondary-btn" type="button">רענן לגרסה החדשה</button>
+        <button id="appUpdateDismissBtn" class="ghost-btn" type="button">סגור</button>
+      </div>
+    </div>
 
     <main class="app-shell">
       <header class="brand-header">
@@ -624,7 +631,11 @@
             <section class="admin-section admin-section-first">
               <div class="section-head">
                 <h3>מעקב תוצאות שחקנים</h3>
-                <button id="clearAttemptsBtn" class="ghost-btn">ניקוי נתונים</button>
+                <div class="inline-actions">
+                  <button id="exportAttemptsCsvBtn" class="ghost-btn" type="button">ייצוא תוצאות CSV</button>
+                  <button id="exportHardestCsvBtn" class="ghost-btn" type="button">ייצוא שאלות מכשילות CSV</button>
+                  <button id="clearAttemptsBtn" class="ghost-btn">ניקוי נתונים</button>
+                </div>
               </div>
               <p id="learningInsightsSummary" class="muted tight"></p>
               <div id="learningAlertsList" class="cards-list learning-alert-list"></div>
@@ -725,6 +736,42 @@
       </footer>
     </main>
 
+    <div id="questionEditModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="questionEditTitle">
+      <div class="modal-card">
+        <div class="section-head">
+          <h3 id="questionEditTitle">עריכת שאלה</h3>
+          <button id="questionEditCloseBtn" type="button" class="ghost-btn">סגור</button>
+        </div>
+        <form id="questionEditForm" class="form-grid">
+          <label class="field full">
+            <span>נוסח השאלה</span>
+            <textarea id="questionEditQuestionInput" rows="3" required></textarea>
+          </label>
+          <label class="field full">
+            <span>רקע קצר</span>
+            <textarea id="questionEditLearnInput" rows="3"></textarea>
+          </label>
+          <label class="field full">
+            <span>הסבר תשובה</span>
+            <textarea id="questionEditExplanationInput" rows="3"></textarea>
+          </label>
+          <div class="field full">
+            <span>אפשרויות תשובה</span>
+            <div id="questionEditOptionsWrap" class="modal-options-grid"></div>
+          </div>
+          <label class="field">
+            <span>תשובה נכונה</span>
+            <select id="questionEditAnswerSelect"></select>
+          </label>
+          <div class="actions-row">
+            <button id="questionEditSaveBtn" type="submit" class="primary-btn">שמור שינויים</button>
+            <button id="questionEditCancelBtn" type="button" class="ghost-btn">ביטול</button>
+          </div>
+        </form>
+        <p id="questionEditMsg" class="form-msg hidden"></p>
+      </div>
+    </div>
+
     <div class="always-actions">
       <button id="newGameAnytimeBtn" class="secondary-btn" type="button">משחק חדש בכל שלב</button>
       <button id="homeAnytimeBtn" class="ghost-btn" type="button">מסך הבית</button>
@@ -749,7 +796,34 @@
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
-          navigator.serviceWorker.register("./sw.js").catch(() => {});
+          navigator.serviceWorker
+            .register("./sw.js")
+            .then((registration) => {
+              const notifyUpdate = (worker) => {
+                window.dispatchEvent(
+                  new CustomEvent("mqg-sw-update-ready", {
+                    detail: { worker: worker || null },
+                  }),
+                );
+              };
+
+              if (registration.waiting) {
+                notifyUpdate(registration.waiting);
+              }
+
+              registration.addEventListener("updatefound", () => {
+                const installing = registration.installing;
+                if (!installing) {
+                  return;
+                }
+                installing.addEventListener("statechange", () => {
+                  if (installing.state === "installed" && navigator.serviceWorker.controller) {
+                    notifyUpdate(registration.waiting || installing);
+                  }
+                });
+              });
+            })
+            .catch(() => {});
         });
       }
     </script>

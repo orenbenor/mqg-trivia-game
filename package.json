@@ -5,6 +5,11 @@
   "description": "Static web app for MQG trivia game",
   "scripts": {
     "check": "node --check app.js",
-    "build": "node scripts/build-dist.mjs"
+    "build": "node scripts/build-dist.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.0"
   }
 }

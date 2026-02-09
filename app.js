@@ -305,6 +305,11 @@ const GENERATED_TOPIC_STEMS = [
   "כאשר בוחנים יישום בפועל של {topic}, מה נכון לומר?",
   "איזו אפשרות מייצגת גישה מוסדית תקינה בנושא {topic}?",
 ];
+const SOURCE_BACKED_TOPIC_PROMPTS = [
+  "לפי פרסומי התנועה, איזו קביעה משקפת נכון את המסר בנושא {topic}?",
+  "איזו מהאפשרויות נתמכת ישירות במקור שפורסם בנושא {topic}?",
+  "בהתאם לפרסום הרשמי בנושא {topic}, מה נכון לומר?",
+];
 
 const TELEMARKETING_ACTIVITY_TOPIC_CONFIGS = [
   {
@@ -431,6 +436,203 @@ const TELEMARKETING_ACTIVITY_TOPIC_CONFIGS = [
     ],
   },
 ];
+
+const TELEMARKETING_ACTIVITY_SOURCE_FACTS = {
+  oct7: [
+    {
+      fact: "התנועה דרשה הקמת ועדת חקירה ממלכתית עצמאית שאינה כפופה לדרג הפוליטי.",
+      sourceLabel: "צו על תנאי וצו ביניים בנושא חקירת המבקר (31.12.2025)",
+      canonicalUrl:
+        "https://mqg.org.il/%d7%91%d7%92%d7%a5-%d7%94%d7%95%d7%a8%d7%94-%d7%9c%d7%94%d7%95%d7%a6%d7%99%d7%90-%d7%a6%d7%95-%d7%a2%d7%9c-%d7%aa%d7%a0%d7%90%d7%99-%d7%95%d7%a6%d7%95-%d7%91%d7%99%d7%a0%d7%99%d7%99%d7%9d-%d7%94%d7%9e/",
+      anchorText: "יש צורך בוועדת חקירה ממלכתית",
+    },
+    {
+      fact: "בג\"ץ הוציא צו על תנאי וצו ביניים שהקפיאו את חקירת המבקר בנושא מחדל 7 באוקטובר.",
+      sourceLabel: "צו על תנאי וצו ביניים בנושא חקירת המבקר (31.12.2025)",
+      canonicalUrl:
+        "https://mqg.org.il/%d7%91%d7%92%d7%a5-%d7%94%d7%95%d7%a8%d7%94-%d7%9c%d7%94%d7%95%d7%a6%d7%99%d7%90-%d7%a6%d7%95-%d7%a2%d7%9c-%d7%aa%d7%a0%d7%90%d7%99-%d7%95%d7%a6%d7%95-%d7%91%d7%99%d7%a0%d7%99%d7%99%d7%9d-%d7%94%d7%9e/",
+      anchorText: "צו על תנאי וצו ביניים שהקפיאו את החקירה",
+    },
+    {
+      fact: "חקירה ממלכתית נדרשת לברר לעומק גם את האחריות המדינית וגם את האחריות המקצועית.",
+      sourceLabel: "ועדת חקירה ממלכתית 7 באוקטובר - עמדת התנועה",
+      sourceQuery: "ועדת חקירה ממלכתית 7 באוקטובר אחריות מדינית ומקצועית",
+      anchorText: "בירור אחריות בדרג המדיני והמקצועי",
+    },
+    {
+      fact: "לוועדת חקירה ממלכתית יש חשיבות בזימון עדים ודרישת מסמכים לצורך בדיקה מלאה.",
+      sourceLabel: "ועדת חקירה ממלכתית 7 באוקטובר - עמדת התנועה",
+      sourceQuery: "ועדת חקירה ממלכתית זימון עדים דרישת מסמכים",
+      anchorText: "סמכות לזמן עדים ולדרוש מסמכים",
+    },
+    {
+      fact: "התנועה הדגישה שמנגנון חלופי אינו תחליף לוועדה ממלכתית בלתי תלויה.",
+      sourceLabel: "צו על תנאי וצו ביניים בנושא חקירת המבקר (31.12.2025)",
+      canonicalUrl:
+        "https://mqg.org.il/%d7%91%d7%92%d7%a5-%d7%94%d7%95%d7%a8%d7%94-%d7%9c%d7%94%d7%95%d7%a6%d7%99%d7%90-%d7%a6%d7%95-%d7%a2%d7%9c-%d7%aa%d7%a0%d7%90%d7%99-%d7%95%d7%a6%d7%95-%d7%91%d7%99%d7%a0%d7%99%d7%99%d7%9d-%d7%94%d7%9e/",
+      anchorText: "ועדה ממלכתית ולא הליך חלופי",
+    },
+    {
+      fact: "פרסום מסקנות לציבור וחיזוק שקיפות נתפסים כתנאי לאמון ציבורי בתהליך הבדיקה.",
+      sourceLabel: "ועדת חקירה ממלכתית 7 באוקטובר - עמדת התנועה",
+      sourceQuery: "ועדת חקירה ממלכתית שקיפות אמון ציבורי",
+      anchorText: "אמון ציבורי דורש הליך בדיקה מקצועי ושקוף",
+    },
+    {
+      fact: "קביעת לוחות זמנים מחייבים נתפסת כדרך למנוע מריחה ודחיות לא סבירות בבדיקה.",
+      sourceLabel: "ועדת חקירה ממלכתית 7 באוקטובר - עמדת התנועה",
+      sourceQuery: "ועדת חקירה ממלכתית לוחות זמנים ברורים",
+      anchorText: "לוחות זמנים ברורים מונעים דחיות",
+    },
+    {
+      fact: "דוחות ביניים נועדו לאפשר תיקונים מבצעיים מוקדמים עוד לפני הדוח הסופי.",
+      sourceLabel: "ועדת חקירה ממלכתית 7 באוקטובר - עמדת התנועה",
+      sourceQuery: "ועדת חקירה ממלכתית דוחות ביניים המלצות אופרטיביות",
+      anchorText: "דוחות ביניים לשיפור מוכנות",
+    },
+    {
+      fact: "התנועה הדגישה את הצורך במנגנון פיקוח על יישום ההמלצות גם לאחר פרסום הדוח.",
+      sourceLabel: "ועדת חקירה ממלכתית 7 באוקטובר - עמדת התנועה",
+      sourceQuery: "ועדת חקירה ממלכתית פיקוח על יישום המלצות",
+      anchorText: "פיקוח מתמשך לאחר פרסום המסקנות",
+    },
+    {
+      fact: "שיתוף משפחות הנפגעים וציבור רחב מחזק את הלגיטימציה והאמינות של הוועדה.",
+      sourceLabel: "ועדת חקירה ממלכתית 7 באוקטובר - עמדת התנועה",
+      sourceQuery: "ועדת חקירה ממלכתית שיתוף משפחות נפגעים אמון ציבורי",
+      anchorText: "שיתוף ציבור ומשפחות הנפגעים מחזק אמינות",
+    },
+  ],
+  burden: [
+    {
+      fact: "בהודעת התנועה הודגש יעד גיוס של 12,000 לוחמים כחלק מיישום שוויון בנטל.",
+      sourceLabel: "תגובת התנועה לפסיקת בג\"ץ בנושא הגיוס (04.01.2026)",
+      canonicalUrl:
+        "https://mqg.org.il/%d7%aa%d7%92%d7%95%d7%91%d7%aa-%d7%94%d7%aa%d7%a0%d7%95%d7%a2%d7%94-%d7%9c%d7%90%d7%99%d7%9b%d7%95%d7%aa-%d7%94%d7%a9%d7%9c%d7%98%d7%95%d7%9f-%d7%9c%d7%a4%d7%a1%d7%99%d7%a7%d7%aa-%d7%91%d7%92/",
+      anchorText: "התנועה דרשה לגייס 12,000 לוחמים",
+    },
+    {
+      fact: "התנועה דרשה אכיפה פלילית וכלכלית ולא הסתפקה בהצהרות כלליות.",
+      sourceLabel: "תגובת התנועה לפסיקת בג\"ץ בנושא הגיוס (04.01.2026)",
+      canonicalUrl:
+        "https://mqg.org.il/%d7%aa%d7%92%d7%95%d7%91%d7%aa-%d7%94%d7%aa%d7%a0%d7%95%d7%a2%d7%94-%d7%9c%d7%90%d7%99%d7%9b%d7%95%d7%aa-%d7%94%d7%a9%d7%9c%d7%98%d7%95%d7%9f-%d7%9c%d7%a4%d7%a1%d7%99%d7%a7%d7%aa-%d7%91%d7%92/",
+      anchorText: "נדרשה אכיפה פלילית וכלכלית",
+    },
+    {
+      fact: "שוויון בנטל מוצג כעיקרון המחייב מסגרת שירות הוגנת לכלל האוכלוסיות.",
+      sourceLabel: "שוויון בנטל - עמדת התנועה",
+      sourceQuery: "שוויון בנטל מסגרת שירות הוגנת לכלל האוכלוסיות",
+      anchorText: "מסגרת שירות הוגנת לכלל האוכלוסיות",
+    },
+    {
+      fact: "פרסום נתוני גיוס שוטפים נדרש כדי לאפשר בקרה ציבורית אמינה.",
+      sourceLabel: "שוויון בנטל - עמדת התנועה",
+      sourceQuery: "שוויון בנטל פרסום נתוני גיוס שקיפות בקרה ציבורית",
+      anchorText: "פרסום נתונים שוטף מאפשר בקרה ציבורית",
+    },
+    {
+      fact: "פטורים רחבים ללא נימוק אינם עולים בקנה אחד עם עקרון השוויון בפני החוק.",
+      sourceLabel: "שוויון בנטל - עמדת התנועה",
+      sourceQuery: "שוויון בנטל פטורים חריגים ממוקדים מנומקים",
+      anchorText: "פטורים צריכים להיות חריגים ומנומקים",
+    },
+    {
+      fact: "שירות חלופי אמור להיות משמעותי ומפוקח ולא מסלול סמלי בלבד.",
+      sourceLabel: "שוויון בנטל - עמדת התנועה",
+      sourceQuery: "שוויון בנטל שירות חלופי משמעותי מפוקח",
+      anchorText: "שירות חלופי חייב להיות משמעותי ומפוקח",
+    },
+    {
+      fact: "ניטור חודשי של נתוני הגיוס נתפס ככלי מרכזי לתיקון מהיר בזמן אמת.",
+      sourceLabel: "שוויון בנטל - עמדת התנועה",
+      sourceQuery: "שוויון בנטל ניטור חודשי נתוני גיוס תיקון מהיר",
+      anchorText: "ניטור חודשי מאפשר תיקון מהיר",
+    },
+    {
+      fact: "פיקוח פרלמנטרי קבוע מוצג כחלק מחיזוק אמון הציבור בהחלטות בנושא השירות.",
+      sourceLabel: "שוויון בנטל - עמדת התנועה",
+      sourceQuery: "שוויון בנטל פיקוח פרלמנטרי קבוע אמון הציבור",
+      anchorText: "פיקוח פרלמנטרי קבוע מחזק אמון",
+    },
+    {
+      fact: "התנועה הדגישה שתמריצים לבדם אינם מספיקים ללא מנגנון אכיפה ברור.",
+      sourceLabel: "תגובה לדברי שר הביטחון בנושא שוויון בנטל (15.03.2025)",
+      canonicalUrl:
+        "https://mqg.org.il/%d7%94%d7%aa%d7%a0%d7%95%d7%a2%d7%94-%d7%9c%d7%90%d7%99%d7%9b%d7%95%d7%aa-%d7%94%d7%a9%d7%9c%d7%98%d7%95%d7%9f-%d7%91%d7%aa%d7%92%d7%95%d7%91%d7%94-%d7%9c%d7%93%d7%91%d7%a8%d7%99-%d7%a9%d7%a8-3/",
+      anchorText: "לא התקיימה אכיפה רצינית לאורך השנים",
+    },
+    {
+      fact: "יישום בפועל מוצג כאחריות המדינה ולא כיעד תיאורטי בלבד.",
+      sourceLabel: "שוויון בנטל - עמדת התנועה",
+      sourceQuery: "שוויון בנטל אחריות המדינה ליישום בפועל",
+      anchorText: "המדינה אחראית ליישום בפועל",
+    },
+  ],
+  judicial: [
+    {
+      fact: "התנועה מציגה את עצמאות מערכת המשפט כרכיב יסודי בהגנה על זכויות אדם.",
+      sourceLabel: "ההפיכה המשפטית - עמדת התנועה",
+      sourceQuery: "ההפיכה המשפטית עצמאות מערכת המשפט הגנה על זכויות אדם",
+      anchorText: "עצמאות מערכת המשפט היא רכיב יסודי",
+    },
+    {
+      fact: "איזונים ובלמים נועדו למנוע ריכוז כוח שלטוני בידי גורם אחד.",
+      sourceLabel: "ההפיכה המשפטית - עמדת התנועה",
+      sourceQuery: "ההפיכה המשפטית איזונים ובלמים מניעת ריכוז כוח",
+      anchorText: "איזונים ובלמים למניעת ריכוז כוח",
+    },
+    {
+      fact: "ביקורת שיפוטית מוצגת ככלי לבחינת חוקיות פעולות הרשות המבצעת והמחוקקת.",
+      sourceLabel: "ההפיכה המשפטית - עמדת התנועה",
+      sourceQuery: "ההפיכה המשפטית ביקורת שיפוטית חוקיות פעולות הרשות המבצעת",
+      anchorText: "ביקורת שיפוטית בוחנת חוקיות",
+    },
+    {
+      fact: "שינויים מוסדיים עמוקים צריכים להתבצע לאחר דיון ציבורי רחב ושקוף.",
+      sourceLabel: "ההפיכה המשפטית - עמדת התנועה",
+      sourceQuery: "ההפיכה המשפטית דיון ציבורי רחב ושקוף",
+      anchorText: "שינויים מבניים דורשים דיון ציבורי רחב",
+    },
+    {
+      fact: "חקיקה מהירה מדי נתפסת כסיכון לאיכות ההסדרים ולבדיקת השלכות רוחב.",
+      sourceLabel: "ההפיכה המשפטית - עמדת התנועה",
+      sourceQuery: "ההפיכה המשפטית חקיקה מהירה מדי סיכון לאיכות ההסדרים",
+      anchorText: "חקיקה מהירה עלולה לפגוע באיכות ההסדרים",
+    },
+    {
+      fact: "שקיפות עבודת ועדות החקיקה חיונית לשמירה על אמון הציבור.",
+      sourceLabel: "תגובה לחוות דעת היועמ\"שית (25.01.2026)",
+      canonicalUrl:
+        "https://mqg.org.il/%d7%aa%d7%92%d7%95%d7%91%d7%aa-%d7%94%d7%aa%d7%a0%d7%95%d7%a2%d7%94-%d7%9c%d7%90%d7%99%d7%9b%d7%95%d7%aa-%d7%94%d7%a9%d7%9c%d7%98%d7%95%d7%9f-%d7%9c%d7%97%d7%95%d7%95%d7%aa-%d7%93%d7%a2%d7%aa/",
+      anchorText: "שינוי תקנון עבודת הממשלה ללא בחינה מספקת",
+    },
+    {
+      fact: "מנגנון מאוזן למינוי שופטים מוצג כתנאי לשמירה על עצמאות מקצועית.",
+      sourceLabel: "ההפיכה המשפטית - עמדת התנועה",
+      sourceQuery: "ההפיכה המשפטית מנגנון מינוי שופטים מאוזן עצמאות מקצועית",
+      anchorText: "מנגנון מינוי שופטים מאוזן חשוב",
+    },
+    {
+      fact: "ייעוץ משפטי עצמאי נתפס ככלי שמונע החלטות בלתי חוקיות בממשלה.",
+      sourceLabel: "תגובה לחוות דעת היועמ\"שית (25.01.2026)",
+      canonicalUrl:
+        "https://mqg.org.il/%d7%aa%d7%92%d7%95%d7%91%d7%aa-%d7%94%d7%aa%d7%a0%d7%95%d7%a2%d7%94-%d7%9c%d7%90%d7%99%d7%9b%d7%95%d7%aa-%d7%94%d7%a9%d7%9c%d7%98%d7%95%d7%9f-%d7%9c%d7%97%d7%95%d7%95%d7%aa-%d7%93%d7%a2%d7%aa/",
+      anchorText: "להחלטות ללא בחינה משפטית מספקת",
+    },
+    {
+      fact: "פגיעה בביקורת החוקתית נתפסת כמסכנת במיוחד קבוצות מיעוט.",
+      sourceLabel: "ההפיכה המשפטית - עמדת התנועה",
+      sourceQuery: "ההפיכה המשפטית פגיעה בביקורת החוקתית קבוצות מיעוט",
+      anchorText: "פגיעה בביקורת החוקתית משפיעה על קבוצות מיעוט",
+    },
+    {
+      fact: "רפורמה מאוזנת נבחנת לפי יכולתה לשמור גם על משילות וגם על זכויות יסוד.",
+      sourceLabel: "ההפיכה המשפטית - עמדת התנועה",
+      sourceQuery: "ההפיכה המשפטית איזון בין משילות לזכויות יסוד",
+      anchorText: "משילות וזכויות יסוד דורשות איזון",
+    },
+  ],
+};
 
 const EDUCATION_DEPARTMENT_TOPIC_CONFIG = {
   id: "education_core",
@@ -1021,12 +1223,22 @@ const adminState = {
   longTextAnalysis: null,
   lastLongTextBatchDraftIds: [],
   questionAuditReport: null,
+  questionEditTargetId: "",
   syncTimerId: null,
   syncInFlight: false,
   isHydratingRemote: false,
 };
 
+const appUpdateState = {
+  waitingWorker: null,
+  isApplying: false,
+  reloadTimerId: null,
+};
+
 const dom = {
+  appUpdateBanner: document.getElementById("appUpdateBanner"),
+  appUpdateReloadBtn: document.getElementById("appUpdateReloadBtn"),
+  appUpdateDismissBtn: document.getElementById("appUpdateDismissBtn"),
   screenQuiz: document.getElementById("screenQuiz"),
   bgMusic: document.getElementById("bgMusic"),
   musicControls: document.getElementById("musicControls"),
@@ -1105,6 +1317,8 @@ const dom = {
   adminStats: document.getElementById("adminStats"),
   attemptsTableBody: document.getElementById("attemptsTableBody"),
   learningMetricsList: document.getElementById("learningMetricsList"),
+  exportAttemptsCsvBtn: document.getElementById("exportAttemptsCsvBtn"),
+  exportHardestCsvBtn: document.getElementById("exportHardestCsvBtn"),
   clearAttemptsBtn: document.getElementById("clearAttemptsBtn"),
   resetQuestionCyclesPublicBtn: document.getElementById("resetQuestionCyclesPublicBtn"),
   questionCycleResetMsg: document.getElementById("questionCycleResetMsg"),
@@ -1163,6 +1377,17 @@ const dom = {
   learningAlertsList: document.getElementById("learningAlertsList"),
   questionDifficultyList: document.getElementById("questionDifficultyList"),
   learningRecommendationsList: document.getElementById("learningRecommendationsList"),
+  questionEditModal: document.getElementById("questionEditModal"),
+  questionEditForm: document.getElementById("questionEditForm"),
+  questionEditQuestionInput: document.getElementById("questionEditQuestionInput"),
+  questionEditLearnInput: document.getElementById("questionEditLearnInput"),
+  questionEditExplanationInput: document.getElementById("questionEditExplanationInput"),
+  questionEditOptionsWrap: document.getElementById("questionEditOptionsWrap"),
+  questionEditAnswerSelect: document.getElementById("questionEditAnswerSelect"),
+  questionEditSaveBtn: document.getElementById("questionEditSaveBtn"),
+  questionEditCancelBtn: document.getElementById("questionEditCancelBtn"),
+  questionEditCloseBtn: document.getElementById("questionEditCloseBtn"),
+  questionEditMsg: document.getElementById("questionEditMsg"),
   adminTabButtons: Array.from(document.querySelectorAll("[data-admin-tab-target]")),
   adminTabPanels: Array.from(document.querySelectorAll("[data-admin-tab-panel]")),
 };
@@ -1445,6 +1670,9 @@ function bindEvents() {
     renderLearningMetrics();
   });
 
+  dom.exportAttemptsCsvBtn?.addEventListener("click", exportAttemptsCsv);
+  dom.exportHardestCsvBtn?.addEventListener("click", exportHardestQuestionsCsv);
+
   dom.activityForm.addEventListener("submit", handleActivitySubmit);
   dom.adminUserForm.addEventListener("submit", handleAdminUserCreate);
   dom.adminPasswordForm.addEventListener("submit", handleOwnPasswordChange);
@@ -1508,6 +1736,35 @@ function bindEvents() {
   dom.runQuestionAuditBtn.addEventListener("click", runQuestionBankAudit);
   dom.clearQuestionAuditBtn.addEventListener("click", clearQuestionBankAuditReport);
 
+  dom.questionEditForm?.addEventListener("submit", submitQuestionEditModal);
+  dom.questionEditCancelBtn?.addEventListener("click", closeQuestionEditModal);
+  dom.questionEditCloseBtn?.addEventListener("click", closeQuestionEditModal);
+  dom.questionEditModal?.addEventListener("click", (event) => {
+    if (event.target === dom.questionEditModal) {
+      closeQuestionEditModal();
+    }
+  });
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && dom.questionEditModal && !dom.questionEditModal.classList.contains("hidden")) {
+      closeQuestionEditModal();
+    }
+  });
+
+  window.addEventListener("mqg-sw-update-ready", (event) => {
+    const waitingWorker = event?.detail?.worker;
+    if (waitingWorker) {
+      appUpdateState.waitingWorker = waitingWorker;
+    }
+    showAppUpdateBanner();
+  });
+  dom.appUpdateDismissBtn?.addEventListener("click", () => {
+    hideAppUpdateBanner();
+  });
+  dom.appUpdateReloadBtn?.addEventListener("click", applyAppUpdateNow);
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.addEventListener("controllerchange", handleAppServiceWorkerControllerChange);
+  }
+
   window.addEventListener(
     "pointerdown",
     () => {
@@ -1543,6 +1800,184 @@ function resetQuestionCyclesFlow() {
     "האיפוס הצליח. מחזור השאלות אותחל והמערכת תתחיל ערבוב חדש.",
     true,
   );
+}
+
+function showAppUpdateBanner() {
+  dom.appUpdateBanner?.classList.remove("hidden");
+}
+
+function hideAppUpdateBanner() {
+  if (appUpdateState.isApplying) {
+    return;
+  }
+  dom.appUpdateBanner?.classList.add("hidden");
+}
+
+function clearAppUpdateReloadTimer() {
+  if (appUpdateState.reloadTimerId) {
+    window.clearTimeout(appUpdateState.reloadTimerId);
+    appUpdateState.reloadTimerId = null;
+  }
+}
+
+function handleAppServiceWorkerControllerChange() {
+  if (!appUpdateState.isApplying) {
+    return;
+  }
+  clearAppUpdateReloadTimer();
+  window.location.reload();
+}
+
+function applyAppUpdateNow() {
+  if (appUpdateState.isApplying) {
+    return;
+  }
+
+  appUpdateState.isApplying = true;
+  dom.appUpdateReloadBtn.disabled = true;
+  dom.appUpdateDismissBtn.disabled = true;
+
+  const fallbackReload = () => {
+    clearAppUpdateReloadTimer();
+    appUpdateState.reloadTimerId = window.setTimeout(() => {
+      window.location.reload();
+    }, 1600);
+  };
+
+  const waitingWorker = appUpdateState.waitingWorker;
+  if (waitingWorker && typeof waitingWorker.postMessage === "function") {
+    waitingWorker.postMessage({ type: "SKIP_WAITING" });
+    fallbackReload();
+    return;
+  }
+
+  if (!("serviceWorker" in navigator) || !navigator.serviceWorker.getRegistration) {
+    window.location.reload();
+    return;
+  }
+
+  navigator.serviceWorker.getRegistration()
+    .then((registration) => {
+      if (registration?.waiting && typeof registration.waiting.postMessage === "function") {
+        appUpdateState.waitingWorker = registration.waiting;
+        registration.waiting.postMessage({ type: "SKIP_WAITING" });
+        fallbackReload();
+        return;
+      }
+      window.location.reload();
+    })
+    .catch(() => {
+      window.location.reload();
+    });
+}
+
+function escapeCsvCell(value) {
+  const raw = value === null || value === undefined ? "" : String(value);
+  if (/[",\n]/.test(raw)) {
+    return `"${raw.replace(/"/g, "\"\"")}"`;
+  }
+  return raw;
+}
+
+function buildCsvContent(headers, rows) {
+  const allRows = [headers, ...rows];
+  return allRows.map((row) => row.map((cell) => escapeCsvCell(cell)).join(",")).join("\n");
+}
+
+function downloadCsvFile(filename, headers, rows) {
+  const csvText = buildCsvContent(headers, rows);
+  const blob = new Blob([`\uFEFF${csvText}`], { type: "text/csv;charset=utf-8;" });
+  const href = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = href;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(href);
+}
+
+function buildExportTimestamp() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const hour = String(now.getHours()).padStart(2, "0");
+  const minute = String(now.getMinutes()).padStart(2, "0");
+  return `${year}${month}${day}-${hour}${minute}`;
+}
+
+function exportAttemptsCsv() {
+  const attempts = readStorage(STORAGE_KEYS.attempts, []);
+  if (!attempts.length) {
+    window.alert("אין עדיין נתוני תוצאות לייצוא.");
+    return;
+  }
+
+  const headers = [
+    "player_name",
+    "score",
+    "correct",
+    "total",
+    "percent",
+    "duration_seconds",
+    "avg_answer_seconds",
+    "timeouts",
+    "played_at",
+  ];
+  const rows = attempts.map((attempt) => [
+    normalizeSpace(attempt?.playerName) || "ללא שם",
+    Number(attempt?.score || 0),
+    Number(attempt?.correct || 0),
+    Number(attempt?.total || 0),
+    Number(attempt?.percent || 0),
+    Number(attempt?.durationSec || 0),
+    Number(attempt?.avgAnswerSec || 0).toFixed(2),
+    Number(attempt?.timeoutCount || 0),
+    normalizeSpace(attempt?.playedAt),
+  ]);
+
+  downloadCsvFile(`mqg-attempts-${buildExportTimestamp()}.csv`, headers, rows);
+}
+
+function exportHardestQuestionsCsv() {
+  const rows = buildQuestionLearningRows(readStorage(STORAGE_KEYS.attempts, []));
+  const actionable = rows.filter((item) => item.total >= 1);
+  if (!actionable.length) {
+    window.alert("אין עדיין נתונים ברמת שאלה לייצוא.");
+    return;
+  }
+
+  const headers = [
+    "question_id",
+    "category",
+    "question",
+    "sample_size",
+    "correct",
+    "wrong",
+    "timeouts",
+    "accuracy_percent",
+    "fail_rate_percent",
+    "timeout_rate_percent",
+    "risk_score",
+    "avg_answer_seconds",
+  ];
+  const csvRows = actionable.map((item) => [
+    item.id,
+    item.category,
+    item.question,
+    item.total,
+    item.correct,
+    item.wrong,
+    item.timeouts,
+    item.accuracy,
+    item.failRate,
+    item.timeoutRate,
+    item.riskScore,
+    Number(item.avgSec || 0).toFixed(2),
+  ]);
+
+  downloadCsvFile(`mqg-hardest-questions-${buildExportTimestamp()}.csv`, headers, csvRows);
 }
 
 function showScreen(screenId) {
@@ -2515,9 +2950,102 @@ function buildSingleQuestionVariant(questionText, prefixText) {
 function buildTelemarketingActivityQuestionPools() {
   const output = {};
   TELEMARKETING_ACTIVITY_TOPIC_CONFIGS.forEach((topicConfig) => {
+    const sourceFacts = TELEMARKETING_ACTIVITY_SOURCE_FACTS[topicConfig.id];
+    if (Array.isArray(sourceFacts) && sourceFacts.length >= 8) {
+      output[topicConfig.id] = buildSourceBackedTopicQuestions(topicConfig, sourceFacts, 30);
+      return;
+    }
     output[topicConfig.id] = buildGeneratedTopicQuestions(topicConfig, 30);
   });
   return output;
+}
+
+function buildSourceBackedTopicQuestions(config, sourceFactsInput, totalQuestions) {
+  const sourceFacts = Array.isArray(sourceFactsInput) ? sourceFactsInput : [];
+  const count = Math.max(1, Number(totalQuestions) || 1);
+  const topicTitle = normalizeSpace(config?.shortTitle || config?.title || "הנושא");
+  const learnText = normalizeSpace(config?.learn) || `רקע לנושא: ${topicTitle}`;
+  const baseCategory = normalizeSpace(config?.category) || "פעילות ציבורית";
+  const baseKind = normalizeSpace(config?.kind) || "activity";
+  const baseDate = normalizeSpace(config?.date) || "2026-02-09";
+  const idPrefix = normalizeSpace(config?.id) || "topic";
+  const safeFacts = sourceFacts
+    .map((item) => ({
+      fact: normalizeSpace(item?.fact),
+      sourceLabel: normalizeSpace(item?.sourceLabel) || "מקור",
+      canonicalUrl: normalizeSpace(item?.canonicalUrl),
+      sourceQuery: normalizeSpace(item?.sourceQuery),
+      anchorText: trimForTextFragment(normalizeSpace(item?.anchorText) || normalizeSpace(item?.fact)),
+    }))
+    .filter((item) => item.fact);
+
+  if (safeFacts.length < 4) {
+    return buildGeneratedTopicQuestions(config, count);
+  }
+
+  const rows = [];
+  for (let i = 0; i < count; i += 1) {
+    const factRow = safeFacts[i % safeFacts.length];
+    const promptTemplate = SOURCE_BACKED_TOPIC_PROMPTS[i % SOURCE_BACKED_TOPIC_PROMPTS.length];
+    const question = promptTemplate.replace("{topic}", topicTitle);
+    const correct = factRow.fact;
+    const distractors = buildSourceBackedQuestionDistractors(correct, safeFacts, i);
+    const options = shuffleArray([correct, ...distractors]).slice(0, 4);
+    const answer = options.indexOf(correct);
+
+    if (answer < 0) {
+      continue;
+    }
+
+    rows.push({
+      id: `${idPrefix}_src_${String(i + 1).padStart(2, "0")}`,
+      category: baseCategory,
+      kind: baseKind,
+      date: baseDate,
+      learn: learnText,
+      question,
+      options,
+      answer,
+      explanation: `${correct} זו הקביעה שמופיעה במקור שעליו מבוססת השאלה.`,
+      sources: [
+        {
+          label: factRow.sourceLabel,
+          url: factRow.canonicalUrl || buildMqgSearchUrl(factRow.sourceQuery || factRow.sourceLabel),
+          anchorText: factRow.anchorText,
+        },
+      ],
+    });
+  }
+
+  return rows;
+}
+
+function buildSourceBackedQuestionDistractors(correctFact, sourceFacts, indexSeed) {
+  const unique = new Set();
+  const output = [];
+  const factsPool = sourceFacts
+    .map((item) => normalizeSpace(item?.fact))
+    .filter((item) => item && item !== correctFact);
+
+  for (let i = 0; i < factsPool.length && output.length < 3; i += 1) {
+    const candidate = factsPool[(indexSeed + i * 3) % factsPool.length];
+    const safe = normalizeSpace(candidate);
+    if (!safe) {
+      continue;
+    }
+    const key = safe.toLowerCase();
+    if (unique.has(key)) {
+      continue;
+    }
+    unique.add(key);
+    output.push(safe);
+  }
+
+  while (output.length < 3) {
+    output.push(`האפשרות הזו אינה נתמכת במקור (${output.length + 1}).`);
+  }
+
+  return output.slice(0, 3);
 }
 
 function buildGeneratedTopicQuestions(config, totalQuestions) {
@@ -5941,64 +6469,165 @@ function restoreQuestion(questionId) {
   renderAllQuestionsManager();
 }
 
-function editQuestion(questionId) {
+function readQuestionEditOptionValues() {
+  if (!dom.questionEditOptionsWrap) {
+    return [];
+  }
+  return Array.from(dom.questionEditOptionsWrap.querySelectorAll("input[data-option-index]"))
+    .map((input) => normalizeSpace(input.value))
+    .map((value, index) => value || `אפשרות ${index + 1}`);
+}
+
+function syncQuestionEditAnswerSelect(selectedIndex = 0) {
+  if (!dom.questionEditAnswerSelect) {
+    return;
+  }
+  const options = readQuestionEditOptionValues();
+  dom.questionEditAnswerSelect.innerHTML = "";
+  options.forEach((optionText, index) => {
+    const node = document.createElement("option");
+    node.value = String(index);
+    node.textContent = `${index + 1}. ${clampText(optionText, 70)}`;
+    dom.questionEditAnswerSelect.appendChild(node);
+  });
+  const maxIndex = Math.max(0, options.length - 1);
+  const safeIndex = clampNumber(selectedIndex, 0, maxIndex);
+  dom.questionEditAnswerSelect.value = String(safeIndex);
+}
+
+function renderQuestionEditOptionFields(optionList, answerIndex) {
+  if (!dom.questionEditOptionsWrap) {
+    return;
+  }
+  const options = sanitizeOptionsList(optionList);
+  while (options.length < 4) {
+    options.push(`אפשרות ${options.length + 1}`);
+  }
+
+  dom.questionEditOptionsWrap.innerHTML = "";
+  options.forEach((optionText, index) => {
+    const label = document.createElement("label");
+    label.className = "field";
+    const title = document.createElement("span");
+    title.textContent = `אפשרות ${index + 1}`;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.required = true;
+    input.value = optionText;
+    input.dataset.optionIndex = String(index);
+    input.addEventListener("input", () => {
+      const currentAnswer = Number(dom.questionEditAnswerSelect?.value || answerIndex || 0);
+      syncQuestionEditAnswerSelect(currentAnswer);
+    });
+    label.appendChild(title);
+    label.appendChild(input);
+    dom.questionEditOptionsWrap.appendChild(label);
+  });
+
+  syncQuestionEditAnswerSelect(answerIndex);
+}
+
+function closeQuestionEditModal() {
+  adminState.questionEditTargetId = "";
+  if (dom.questionEditModal) {
+    dom.questionEditModal.classList.add("hidden");
+  }
+  dom.questionEditForm?.reset();
+  if (dom.questionEditOptionsWrap) {
+    dom.questionEditOptionsWrap.innerHTML = "";
+  }
+  if (dom.questionEditAnswerSelect) {
+    dom.questionEditAnswerSelect.innerHTML = "";
+  }
+  hideMessage(dom.questionEditMsg);
+}
+
+function openQuestionEditModal(question) {
+  if (!question || !dom.questionEditModal) {
+    return;
+  }
+  adminState.questionEditTargetId = normalizeSpace(question.id);
+  dom.questionEditQuestionInput.value = normalizeSpace(question.question);
+  dom.questionEditLearnInput.value = normalizeSpace(question.learn);
+  dom.questionEditExplanationInput.value = normalizeSpace(question.explanation);
+  renderQuestionEditOptionFields(question.options || [], Number(question.answer || 0));
+  hideMessage(dom.questionEditMsg);
+  dom.questionEditModal.classList.remove("hidden");
+  window.setTimeout(() => {
+    dom.questionEditQuestionInput?.focus();
+  }, 20);
+}
+
+function submitQuestionEditModal(event) {
+  event?.preventDefault();
+  hideMessage(dom.questionEditMsg);
+
+  const questionId = normalizeSpace(adminState.questionEditTargetId);
+  if (!questionId) {
+    showMessage(dom.questionEditMsg, "לא זוהתה שאלה לעריכה.", false);
+    return;
+  }
+
   const inventory = getQuestionInventory();
-  const question = inventory.allQuestions.find((item) => item.id === questionId);
-  if (!question) {
+  const originalQuestion = inventory.allQuestions.find((item) => normalizeSpace(item.id) === questionId);
+  if (!originalQuestion) {
+    showMessage(dom.questionEditMsg, "השאלה לא נמצאה במאגר. רענן ונסה שוב.", false);
     return;
   }
 
-  const newQuestionText = window.prompt("עריכת נוסח השאלה:", question.question);
-  if (newQuestionText === null) {
-    return;
-  }
-  const newLearn = window.prompt("עריכת רקע קצר:", question.learn || "");
-  if (newLearn === null) {
-    return;
-  }
-  const newExplanation = window.prompt("עריכת הסבר תשובה:", question.explanation || "");
-  if (newExplanation === null) {
-    return;
-  }
+  const questionText = normalizeSpace(dom.questionEditQuestionInput.value);
+  const learnText = normalizeSpace(dom.questionEditLearnInput.value);
+  const explanationText = normalizeSpace(dom.questionEditExplanationInput.value);
+  const options = readQuestionEditOptionValues();
+  const answerIndex = Number(dom.questionEditAnswerSelect?.value || 0);
 
-  const newOptions = [];
-  for (let i = 0; i < question.options.length; i += 1) {
-    const edited = window.prompt(`אפשרות ${i + 1}:`, question.options[i] || "");
-    if (edited === null) {
-      return;
-    }
-    newOptions.push(String(edited).trim() || question.options[i]);
-  }
-
-  const answerInput = window.prompt(
-    `מספר התשובה הנכונה (1-${newOptions.length}):`,
-    String((question.answer || 0) + 1),
-  );
-  if (answerInput === null) {
+  if (questionText.length < 12) {
+    showMessage(dom.questionEditMsg, "נוסח השאלה קצר מדי. נדרש ניסוח מפורט יותר.", false);
     return;
   }
-  const parsedAnswer = Number(answerInput);
-  if (!Number.isInteger(parsedAnswer) || parsedAnswer < 1 || parsedAnswer > newOptions.length) {
-    window.alert("מספר תשובה לא תקין.");
+  if (options.length < 4) {
+    showMessage(dom.questionEditMsg, "יש להזין לפחות 4 אפשרויות תשובה.", false);
+    return;
+  }
+  const uniqueCount = new Set(options.map((option) => option.toLowerCase())).size;
+  if (uniqueCount < 4) {
+    showMessage(dom.questionEditMsg, "אפשרויות התשובה חייבות להיות שונות זו מזו.", false);
+    return;
+  }
+  if (!Number.isInteger(answerIndex) || answerIndex < 0 || answerIndex >= options.length) {
+    showMessage(dom.questionEditMsg, "בחירת התשובה הנכונה אינה תקינה.", false);
     return;
   }
 
   const overrideMap = readObjectStorage(STORAGE_KEYS.questionOverrides, {});
   overrideMap[questionId] = {
-    question: String(newQuestionText).trim() || question.question,
-    learn: String(newLearn).trim() || question.learn,
-    explanation: String(newExplanation).trim() || question.explanation,
-    options: newOptions,
-    answer: parsedAnswer - 1,
+    question: questionText || originalQuestion.question,
+    learn: learnText || originalQuestion.learn,
+    explanation: explanationText || originalQuestion.explanation,
+    options,
+    answer: answerIndex,
   };
 
   const saved = writeStorage(STORAGE_KEYS.questionOverrides, overrideMap);
   if (!saved) {
-    showMessage(dom.activityFormMsg, "עריכת השאלה נכשלה.", false);
+    showMessage(dom.questionEditMsg, "שמירת השינויים נכשלה בגלל מגבלת אחסון בדפדפן.", false);
     return;
   }
 
   renderAllQuestionsManager();
+  showMessage(dom.questionEditMsg, "השאלה נשמרה בהצלחה.", true);
+  window.setTimeout(() => {
+    closeQuestionEditModal();
+  }, 260);
+}
+
+function editQuestion(questionId) {
+  const inventory = getQuestionInventory();
+  const question = inventory.allQuestions.find((item) => normalizeSpace(item.id) === normalizeSpace(questionId));
+  if (!question) {
+    return;
+  }
+  openQuestionEditModal(question);
 }
 
 function markLongTextAsChangedAfterAnalysis() {
@@ -6935,6 +7564,14 @@ function buildSourceHref(source, question) {
 
 function stripDateFromLabel(labelText) {
   return normalizeSpace(labelText).replace(/\(\s*\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\s*\)/g, "").trim();
+}
+
+function buildMqgSearchUrl(query) {
+  const safe = normalizeSpace(query);
+  if (!safe) {
+    return "https://mqg.org.il/";
+  }
+  return `https://mqg.org.il/?s=${encodeURIComponent(safe)}`;
 }
 
 function getBaseQuestionId(question) {

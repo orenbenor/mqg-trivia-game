@@ -36,6 +36,26 @@ body {
     linear-gradient(180deg, #f8fbff 0%, #eef4ff 46%, #edf3fa 100%);
 }
 
+.app-update-banner {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  margin: 0 auto;
+  width: min(1080px, calc(100% - 1.6rem));
+  border-radius: 0 0 14px 14px;
+  border: 1px solid rgba(11, 66, 122, 0.18);
+  border-top: 0;
+  background: linear-gradient(120deg, #fff8ef, #fff1e8);
+  box-shadow: 0 10px 22px rgba(4, 30, 58, 0.15);
+  padding: 0.55rem 0.8rem;
+}
+
+.app-update-text {
+  margin: 0;
+  color: #8f390f;
+  font-weight: 800;
+}
+
 .back-glow {
   position: fixed;
   width: 440px;
@@ -189,6 +209,33 @@ h3 {
   margin-top: 0.8rem;
   border-top: 1px dashed var(--line);
   padding-top: 0.75rem;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(4, 30, 58, 0.4);
+  display: grid;
+  place-items: center;
+  padding: 0.9rem;
+}
+
+.modal-card {
+  width: min(920px, 100%);
+  max-height: calc(100vh - 1.8rem);
+  overflow: auto;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: #fff;
+  box-shadow: 0 22px 45px rgba(4, 30, 58, 0.28);
+  padding: 0.9rem;
+}
+
+.modal-options-grid {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.35rem;
 }
 
 .form-grid {
