@@ -1265,6 +1265,7 @@ const gameState = {
   quickMode: QUICK_MODES.REGULAR,
   entryDepartment: "",
   activityTopic: TELEMARKETING_ACTIVITY_TOPICS[0]?.id || "oct7",
+  hasStartedGame: false,
   playerName: "",
   questions: [],
   index: 0,
@@ -1508,6 +1509,9 @@ function bindEvents() {
   });
 
   dom.newGameAnytimeBtn.addEventListener("click", () => {
+    if (!gameState.hasStartedGame) {
+      return;
+    }
     resetAndGoToNewGame();
     ensureMusicPlayback();
   });
@@ -2245,6 +2249,7 @@ function showScreen(screenId) {
   } else {
     dom.newGameAnytimeBtn.textContent = "משחק חדש בכל שלב";
   }
+  updateAnytimeButtonsVisibility();
 
   const hideMusicControls = screenId === "screenAdminPanel" || screenId === "screenAdminLogin";
   dom.musicControls.classList.toggle("hidden", hideMusicControls);
@@ -2255,6 +2260,13 @@ function showScreen(screenId) {
       hideMessage(dom.entryDepartmentMsg);
     }
   }
+}
+
+function updateAnytimeButtonsVisibility() {
+  if (!dom.newGameAnytimeBtn) {
+    return;
+  }
+  dom.newGameAnytimeBtn.classList.toggle("hidden", !gameState.hasStartedGame);
 }
 
 function resolveScreenId(shortName) {
@@ -2354,6 +2366,23 @@ function resetAndGoToNewGame() {
   dom.screenQuiz.classList.remove("time-warning", "time-critical");
   hideMessage(dom.questionCycleResetMsg);
   hideMessage(dom.quickSetupError);
+  const department = normalizeEntryDepartment(gameState.entryDepartment);
+  if (!department) {
+    showScreen("screenLanding");
+    return;
+  }
+
+  if (department === ENTRY_DEPARTMENTS.EDUCATION) {
+    setEntryDepartment(ENTRY_DEPARTMENTS.EDUCATION);
+    setQuickMode(QUICK_MODES.REGULAR);
+  } else {
+    setEntryDepartment(ENTRY_DEPARTMENTS.TELEMARKETING);
+    setQuickMode(normalizeQuickMode(gameState.quickMode));
+  }
+
+  if (dom.playerNameInput) {
+    dom.playerNameInput.value = normalizeSpace(gameState.playerName);
+  }
   showScreen("screenQuickSetup");
 }
 
@@ -2435,6 +2464,8 @@ function startQuickGame() {
   gameState.adaptiveMode = adaptiveSelection.strategy === "adaptive";
   gameState.adaptiveConfidence = Number(adaptiveSelection.confidence || 0);
   gameState.adaptiveSignals = Number(adaptiveSelection.matchedSignals || 0);
+  gameState.hasStartedGame = true;
+  updateAnytimeButtonsVisibility();
 
   showScreen("screenQuiz");
   renderQuestion();
