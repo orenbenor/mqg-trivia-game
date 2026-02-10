@@ -8885,6 +8885,16 @@ function isLikelyBrokenMqgSourceUrl(rawUrl) {
     return false;
   }
 
+  // MQG search links and WordPress id links are valid, even with root path.
+  const searchTerm = normalizeSpace(parsed.searchParams.get("s"));
+  if (searchTerm) {
+    return false;
+  }
+  const postId = normalizeSpace(parsed.searchParams.get("p"));
+  if (postId && /^\d+$/.test(postId)) {
+    return false;
+  }
+
   const path = parsed.pathname || "/";
   if (path === "/" || path === "") {
     return true;
