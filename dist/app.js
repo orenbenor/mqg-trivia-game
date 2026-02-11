@@ -54,6 +54,8 @@ const STORAGE_KEYS = {
   learningAlertSettings: "mqg_learning_alert_settings_v1",
   playerSpacedMemory: "mqg_player_spaced_memory_v1",
   antiSpamState: "mqg_anti_spam_state_v1",
+  issueReports: "mqg_issue_reports_v1",
+  adminInboxSeenByManager: "mqg_admin_inbox_seen_by_manager_v1",
 };
 const REMOTE_SYNCABLE_KEYS = [
   STORAGE_KEYS.attempts,
@@ -68,6 +70,8 @@ const REMOTE_SYNCABLE_KEYS = [
   STORAGE_KEYS.familyCycleByScope,
   STORAGE_KEYS.learningAlertSettings,
   STORAGE_KEYS.playerSpacedMemory,
+  STORAGE_KEYS.issueReports,
+  STORAGE_KEYS.adminInboxSeenByManager,
 ];
 const BACKEND_DEFAULT_CONFIG = {
   enabled: false,
@@ -1326,6 +1330,7 @@ const dom = {
   musicLevelText: document.getElementById("musicLevelText"),
   newGameAnytimeBtn: document.getElementById("newGameAnytimeBtn"),
   homeAnytimeBtn: document.getElementById("homeAnytimeBtn"),
+  reportIssueAnytimeBtn: document.getElementById("reportIssueAnytimeBtn"),
   chooseTelemarketingBtn: document.getElementById("chooseTelemarketingBtn"),
   chooseEducationBtn: document.getElementById("chooseEducationBtn"),
   entryTelemarketingCard: document.getElementById("entryTelemarketingCard"),
@@ -1393,6 +1398,11 @@ const dom = {
   adminSystemCheckStatus: document.getElementById("adminSystemCheckStatus"),
   adminSystemCheckRows: document.getElementById("adminSystemCheckRows"),
   adminStats: document.getElementById("adminStats"),
+  adminInboxBadge: document.getElementById("adminInboxBadge"),
+  adminInboxMarkAllSeenBtn: document.getElementById("adminInboxMarkAllSeenBtn"),
+  adminInboxSummary: document.getElementById("adminInboxSummary"),
+  adminInboxMsg: document.getElementById("adminInboxMsg"),
+  adminInboxList: document.getElementById("adminInboxList"),
   attemptsTableBody: document.getElementById("attemptsTableBody"),
   learningMetricsList: document.getElementById("learningMetricsList"),
   exportAttemptsCsvBtn: document.getElementById("exportAttemptsCsvBtn"),
@@ -1476,6 +1486,14 @@ const dom = {
   questionEditCancelBtn: document.getElementById("questionEditCancelBtn"),
   questionEditCloseBtn: document.getElementById("questionEditCloseBtn"),
   questionEditMsg: document.getElementById("questionEditMsg"),
+  reportIssueModal: document.getElementById("reportIssueModal"),
+  reportIssueForm: document.getElementById("reportIssueForm"),
+  reportIssueTextInput: document.getElementById("reportIssueTextInput"),
+  reportIssueNameInput: document.getElementById("reportIssueNameInput"),
+  reportIssueSubmitBtn: document.getElementById("reportIssueSubmitBtn"),
+  reportIssueCancelBtn: document.getElementById("reportIssueCancelBtn"),
+  reportIssueCloseBtn: document.getElementById("reportIssueCloseBtn"),
+  reportIssueMsg: document.getElementById("reportIssueMsg"),
   adminTabButtons: Array.from(document.querySelectorAll("[data-admin-tab-target]")),
   adminTabPanels: Array.from(document.querySelectorAll("[data-admin-tab-panel]")),
 };
@@ -1488,6 +1506,7 @@ setDefaultDateFields();
 setQuickMode(QUICK_MODES.REGULAR);
 setEntryDepartment("");
 showScreen("screenLanding");
+updateAdminInboxBadge();
 updateTimerUI(QUESTION_TIMEOUT_SECONDS);
 dom.hourglassIcon.style.animationPlayState = "paused";
 initMusic();
@@ -1519,6 +1538,11 @@ function bindEvents() {
   dom.homeAnytimeBtn.addEventListener("click", () => {
     stopQuestionTimer();
     showScreen("screenLanding");
+    ensureMusicPlayback();
+  });
+
+  dom.reportIssueAnytimeBtn?.addEventListener("click", () => {
+    openIssueReportModal();
     ensureMusicPlayback();
   });
 
@@ -1692,6 +1716,7 @@ function bindEvents() {
     clearLongTextTopicTitle();
     hideDraftQueueMessage();
     setAdminMode("main");
+    updateAdminInboxBadge();
     stopQuestionTimer();
     showScreen("screenLanding");
     ensureMusicPlayback();
@@ -1735,6 +1760,10 @@ function bindEvents() {
       runAdminSystemCheck({ isManual: true }).catch(() => {});
     });
   }
+
+  dom.adminInboxMarkAllSeenBtn?.addEventListener("click", () => {
+    markAllInboxItemsAsSeen();
+  });
 
   dom.resetQuestionCyclesPublicBtn.addEventListener("click", resetQuestionCyclesFlow);
 
@@ -1789,6 +1818,8 @@ function bindEvents() {
     renderAdminStats();
     renderAttemptsTable();
     renderLearningMetrics();
+    renderAdminInbox();
+    updateAdminInboxBadge();
   });
 
   dom.exportAttemptsCsvBtn?.addEventListener("click", exportAttemptsCsv);
@@ -1867,9 +1898,21 @@ function bindEvents() {
       closeQuestionEditModal();
     }
   });
+  dom.reportIssueForm?.addEventListener("submit", submitIssueReport);
+  dom.reportIssueCancelBtn?.addEventListener("click", closeIssueReportModal);
+  dom.reportIssueCloseBtn?.addEventListener("click", closeIssueReportModal);
+  dom.reportIssueModal?.addEventListener("click", (event) => {
+    if (event.target === dom.reportIssueModal) {
+      closeIssueReportModal();
+    }
+  });
   window.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && dom.questionEditModal && !dom.questionEditModal.classList.contains("hidden")) {
       closeQuestionEditModal();
+      return;
+    }
+    if (event.key === "Escape" && dom.reportIssueModal && !dom.reportIssueModal.classList.contains("hidden")) {
+      closeIssueReportModal();
     }
   });
 
@@ -4222,6 +4265,25 @@ async function pushPublicAttemptToBackend(attempt) {
   }
 }
 
+async function pushPublicIssueReportToBackend(report) {
+  if (!isBackendEnabled() || !backendConfig.publicWriteKey || adminState.currentAdmin?.id) {
+    return;
+  }
+
+  try {
+    await fetch(`${backendConfig.baseUrl}/api/public/issue-report`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-public-key": backendConfig.publicWriteKey,
+      },
+      body: JSON.stringify({ report }),
+    });
+  } catch (_err) {
+    // ignore temporary network issues for public issue reporting
+  }
+}
+
 async function hydrateFromBackendState() {
   if (!isBackendEnabled() || !adminState.currentAdmin?.id) {
     return;
@@ -4269,6 +4331,8 @@ async function runRemoteSyncPull() {
     renderAllQuestionsManager();
     renderAdminUsers();
     renderLongTextDraftsPreview();
+    renderAdminInbox();
+    updateAdminInboxBadge();
   } catch (_err) {
     // ignore temporary sync errors
   } finally {
@@ -4322,8 +4386,484 @@ async function refreshAdminUsersFromBackend() {
   writeStorage(STORAGE_KEYS.adminUsers, normalized);
 }
 
+function getCurrentVisibleScreenId() {
+  for (let i = 0; i < screenIds.length; i += 1) {
+    const id = screenIds[i];
+    const node = document.getElementById(id);
+    if (node && !node.classList.contains("hidden")) {
+      return id;
+    }
+  }
+  return "screenLanding";
+}
+
+function getScreenLabelById(screenId) {
+  const map = {
+    screenLanding: "מסך הבית",
+    screenQuickSetup: "הגדרת משחק",
+    screenAdminLogin: "כניסת מנהל",
+    screenQuiz: "מהלך משחק",
+    screenResult: "מסך סיכום",
+    screenAdminPanel: "לוח מנהל",
+  };
+  return map[normalizeSpace(screenId)] || "מסך לא ידוע";
+}
+
+function buildAttemptInboxKey(attempt) {
+  const baseId = normalizeSpace(attempt?.id);
+  if (baseId) {
+    return baseId;
+  }
+  return [
+    normalizeSpace(attempt?.playedAt),
+    normalizeSpace(attempt?.playerName),
+    String(Number(attempt?.score || 0)),
+  ].join("::");
+}
+
+function buildIssueInboxKey(report) {
+  const baseId = normalizeSpace(report?.id);
+  if (baseId) {
+    return baseId;
+  }
+  return [
+    normalizeSpace(report?.submittedAt),
+    normalizeSpace(report?.submitterName),
+    normalizeSpace(report?.text).slice(0, 70),
+  ].join("::");
+}
+
+function sanitizeIssueReport(reportInput) {
+  const report = reportInput && typeof reportInput === "object" ? reportInput : null;
+  if (!report) {
+    return null;
+  }
+
+  const text = normalizeSpace(report.text);
+  if (!text) {
+    return null;
+  }
+
+  const screenId = normalizeSpace(report.screenId) || "screenLanding";
+  const submittedAt = normalizeSpace(report.submittedAt) || new Date().toISOString();
+
+  return {
+    id: normalizeSpace(report.id) || uid("issue"),
+    type: "issue_report",
+    text,
+    submitterName: normalizeSpace(report.submitterName),
+    playerName: normalizeSpace(report.playerName),
+    screenId,
+    screenLabel: normalizeSpace(report.screenLabel) || getScreenLabelById(screenId),
+    quickMode: normalizeQuickMode(report.quickMode),
+    entryDepartment: normalizeEntryDepartment(report.entryDepartment),
+    questionId: normalizeSpace(report.questionId),
+    submittedAt,
+  };
+}
+
+function readIssueReports() {
+  const reports = readStorage(STORAGE_KEYS.issueReports, []);
+  return (Array.isArray(reports) ? reports : [])
+    .map(sanitizeIssueReport)
+    .filter(Boolean)
+    .slice(0, 500);
+}
+
+function writeIssueReports(reports) {
+  const sanitized = (Array.isArray(reports) ? reports : [])
+    .map(sanitizeIssueReport)
+    .filter(Boolean)
+    .slice(0, 500);
+  return writeStorage(STORAGE_KEYS.issueReports, sanitized);
+}
+
+function getAdminInboxIdentity() {
+  return normalizeAdminUsername(adminState.currentAdmin?.username) || "unknown_admin";
+}
+
+function normalizeIdList(list) {
+  const safeList = Array.isArray(list) ? list : [];
+  const output = [];
+  const seen = new Set();
+  safeList.forEach((raw) => {
+    const safe = normalizeSpace(raw);
+    if (!safe || seen.has(safe)) {
+      return;
+    }
+    seen.add(safe);
+    output.push(safe);
+  });
+  return output.slice(0, 2000);
+}
+
+function sanitizeInboxSeenState(entryInput) {
+  const entry = entryInput && typeof entryInput === "object" ? entryInput : {};
+  return {
+    attemptIds: normalizeIdList(entry.attemptIds),
+    issueIds: normalizeIdList(entry.issueIds),
+    updatedAt: normalizeSpace(entry.updatedAt) || "",
+  };
+}
+
+function readAdminInboxSeenByManager() {
+  const map = readObjectStorage(STORAGE_KEYS.adminInboxSeenByManager, {});
+  const normalized = {};
+  Object.entries(map || {}).forEach(([key, value]) => {
+    const safeKey = normalizeAdminUsername(key);
+    if (!safeKey) {
+      return;
+    }
+    normalized[safeKey] = sanitizeInboxSeenState(value);
+  });
+  return normalized;
+}
+
+function getCurrentAdminInboxSeenState() {
+  const identity = getAdminInboxIdentity();
+  const map = readAdminInboxSeenByManager();
+  return sanitizeInboxSeenState(map[identity]);
+}
+
+function mergeUniqueIds(currentIds, nextIds) {
+  return normalizeIdList([...(Array.isArray(currentIds) ? currentIds : []), ...(Array.isArray(nextIds) ? nextIds : [])]);
+}
+
+function saveCurrentAdminInboxSeenState(nextEntryInput) {
+  if (!adminState.currentAdmin?.id) {
+    return false;
+  }
+  const identity = getAdminInboxIdentity();
+  const map = readAdminInboxSeenByManager();
+  const nextEntry = sanitizeInboxSeenState(nextEntryInput);
+  nextEntry.updatedAt = new Date().toISOString();
+  map[identity] = nextEntry;
+  return writeStorage(STORAGE_KEYS.adminInboxSeenByManager, map);
+}
+
+function getInboxUnreadCounts() {
+  if (!adminState.currentAdmin?.id) {
+    return { attempts: 0, issues: 0, total: 0 };
+  }
+
+  const seenState = getCurrentAdminInboxSeenState();
+  const seenAttemptIds = new Set(seenState.attemptIds);
+  const seenIssueIds = new Set(seenState.issueIds);
+
+  const unreadAttempts = readStorage(STORAGE_KEYS.attempts, [])
+    .map((attempt) => buildAttemptInboxKey(attempt))
+    .filter((id) => id && !seenAttemptIds.has(id)).length;
+
+  const unreadIssues = readIssueReports()
+    .map((report) => buildIssueInboxKey(report))
+    .filter((id) => id && !seenIssueIds.has(id)).length;
+
+  return {
+    attempts: unreadAttempts,
+    issues: unreadIssues,
+    total: unreadAttempts + unreadIssues,
+  };
+}
+
+function formatInboxBadgeCount(count) {
+  const safe = Math.max(0, Number(count) || 0);
+  return safe > 99 ? "99+" : String(safe);
+}
+
+function updateAdminInboxBadge() {
+  if (!dom.adminInboxBadge) {
+    return;
+  }
+  if (!adminState.currentAdmin?.id) {
+    dom.adminInboxBadge.textContent = "0";
+    dom.adminInboxBadge.classList.add("hidden");
+    return;
+  }
+
+  const unread = getInboxUnreadCounts().total;
+  dom.adminInboxBadge.textContent = formatInboxBadgeCount(unread);
+  dom.adminInboxBadge.classList.toggle("hidden", unread <= 0);
+}
+
+function markAllAttemptsAsSeen({ showFeedback = false } = {}) {
+  if (!adminState.currentAdmin?.id) {
+    return;
+  }
+  const seenState = getCurrentAdminInboxSeenState();
+  const attemptIds = readStorage(STORAGE_KEYS.attempts, []).map((attempt) => buildAttemptInboxKey(attempt));
+  const nextState = {
+    ...seenState,
+    attemptIds: mergeUniqueIds(seenState.attemptIds, attemptIds),
+  };
+  const saved = saveCurrentAdminInboxSeenState(nextState);
+  if (showFeedback && dom.adminInboxMsg) {
+    if (saved) {
+      showMessage(dom.adminInboxMsg, "כל תוצאות המשחק סומנו כנצפו.", true);
+    } else {
+      showMessage(dom.adminInboxMsg, "שמירת מצב צפייה נכשלה.", false);
+    }
+  }
+  renderAdminInbox();
+  updateAdminInboxBadge();
+}
+
+function markAllInboxItemsAsSeen() {
+  if (!adminState.currentAdmin?.id) {
+    return;
+  }
+  const seenState = getCurrentAdminInboxSeenState();
+  const attemptIds = readStorage(STORAGE_KEYS.attempts, []).map((attempt) => buildAttemptInboxKey(attempt));
+  const issueIds = readIssueReports().map((report) => buildIssueInboxKey(report));
+  const saved = saveCurrentAdminInboxSeenState({
+    ...seenState,
+    attemptIds: mergeUniqueIds(seenState.attemptIds, attemptIds),
+    issueIds: mergeUniqueIds(seenState.issueIds, issueIds),
+  });
+  if (dom.adminInboxMsg) {
+    if (saved) {
+      showMessage(dom.adminInboxMsg, "כל ההודעות סומנו כנצפות.", true);
+    } else {
+      showMessage(dom.adminInboxMsg, "שמירת מצב צפייה נכשלה.", false);
+    }
+  }
+  renderAdminInbox();
+  updateAdminInboxBadge();
+}
+
+function markInboxItemAsSeen(type, id) {
+  if (!adminState.currentAdmin?.id) {
+    return;
+  }
+  const safeType = normalizeSpace(type).toLowerCase();
+  const safeId = normalizeSpace(id);
+  if (!safeId) {
+    return;
+  }
+  const seenState = getCurrentAdminInboxSeenState();
+  if (safeType === "attempt") {
+    seenState.attemptIds = mergeUniqueIds(seenState.attemptIds, [safeId]);
+  } else if (safeType === "issue") {
+    seenState.issueIds = mergeUniqueIds(seenState.issueIds, [safeId]);
+  } else {
+    return;
+  }
+  saveCurrentAdminInboxSeenState(seenState);
+  renderAdminInbox();
+  updateAdminInboxBadge();
+}
+
+function buildAdminInboxItems() {
+  const seenState = getCurrentAdminInboxSeenState();
+  const seenAttemptIds = new Set(seenState.attemptIds);
+  const seenIssueIds = new Set(seenState.issueIds);
+  const items = [];
+
+  const attempts = readStorage(STORAGE_KEYS.attempts, []);
+  attempts.forEach((attempt) => {
+    const attemptId = buildAttemptInboxKey(attempt);
+    if (!attemptId) {
+      return;
+    }
+    const playerName = normalizeSpace(attempt?.playerName) || "שחקן ללא שם";
+    const points = Number(attempt?.score || 0);
+    const percent = Number(attempt?.percent || 0);
+    const total = Number(attempt?.total || 0);
+    const correct = Number(attempt?.correct || 0);
+    items.push({
+      kind: "attempt",
+      key: attemptId,
+      unread: !seenAttemptIds.has(attemptId),
+      createdAt: normalizeSpace(attempt?.playedAt) || new Date().toISOString(),
+      title: `תוצאה חדשה: ${playerName}`,
+      body: `סיום משחק: ${points} נק' | ${percent}% | ${correct}/${total} תשובות נכונות.`,
+      meta: `זמן משחק: ${formatDateTime(attempt?.playedAt)}`,
+    });
+  });
+
+  const reports = readIssueReports();
+  reports.forEach((report) => {
+    const reportId = buildIssueInboxKey(report);
+    if (!reportId) {
+      return;
+    }
+    const submitter = normalizeSpace(report.submitterName) || normalizeSpace(report.playerName) || "משתמש";
+    const questionPart = report.questionId ? ` | שאלה: ${report.questionId}` : "";
+    items.push({
+      kind: "issue",
+      key: reportId,
+      unread: !seenIssueIds.has(reportId),
+      createdAt: normalizeSpace(report.submittedAt) || new Date().toISOString(),
+      title: `דיווח תקלה: ${submitter}`,
+      body: report.text,
+      meta: `${report.screenLabel || getScreenLabelById(report.screenId)}${questionPart} | ${formatDateTime(report.submittedAt)}`,
+    });
+  });
+
+  items.sort((a, b) => {
+    const aTime = Date.parse(a.createdAt) || 0;
+    const bTime = Date.parse(b.createdAt) || 0;
+    if (aTime !== bTime) {
+      return bTime - aTime;
+    }
+    if (a.unread !== b.unread) {
+      return Number(b.unread) - Number(a.unread);
+    }
+    return a.title.localeCompare(b.title, "he");
+  });
+
+  return items.slice(0, 200);
+}
+
+function renderAdminInbox() {
+  if (!dom.adminInboxList || !dom.adminInboxSummary || !dom.adminInboxMarkAllSeenBtn) {
+    return;
+  }
+
+  if (!adminState.currentAdmin?.id) {
+    dom.adminInboxList.innerHTML = "";
+    dom.adminInboxList.appendChild(makeInfoMessage("התחבר כמנהל כדי לצפות בהודעות נכנסות."));
+    dom.adminInboxSummary.textContent = "אין סשן מנהל פעיל.";
+    dom.adminInboxMarkAllSeenBtn.disabled = true;
+    return;
+  }
+
+  const items = buildAdminInboxItems();
+  const unread = getInboxUnreadCounts();
+  dom.adminInboxSummary.textContent = `לא נקראו: ${unread.total} (תוצאות משחק: ${unread.attempts}, דיווחי תקלה: ${unread.issues})`;
+  dom.adminInboxMarkAllSeenBtn.disabled = unread.total <= 0;
+  dom.adminInboxList.innerHTML = "";
+
+  if (!items.length) {
+    dom.adminInboxList.appendChild(makeInfoMessage("אין עדיין הודעות נכנסות."));
+    return;
+  }
+
+  items.forEach((item) => {
+    const card = document.createElement("article");
+    card.className = `info-card inbox-item ${item.unread ? "unread" : ""}`.trim();
+
+    const header = document.createElement("div");
+    header.className = "section-head";
+
+    const title = document.createElement("h4");
+    title.textContent = item.title;
+
+    const badge = document.createElement("span");
+    badge.className = `badge ${item.unread ? "audit-level bad" : "system-info"}`;
+    badge.textContent = item.unread ? "חדש" : "נצפה";
+
+    header.appendChild(title);
+    header.appendChild(badge);
+
+    const body = document.createElement("p");
+    body.textContent = item.body;
+
+    const meta = document.createElement("p");
+    meta.className = "inbox-meta";
+    meta.textContent = item.meta;
+
+    const actions = document.createElement("div");
+    actions.className = "inline-actions";
+
+    if (item.unread) {
+      const seenBtn = document.createElement("button");
+      seenBtn.type = "button";
+      seenBtn.className = "ghost-btn";
+      seenBtn.textContent = "סמן כנצפה";
+      seenBtn.addEventListener("click", () => {
+        markInboxItemAsSeen(item.kind, item.key);
+      });
+      actions.appendChild(seenBtn);
+    }
+
+    if (item.kind === "attempt") {
+      const openResultsBtn = document.createElement("button");
+      openResultsBtn.type = "button";
+      openResultsBtn.className = "secondary-btn";
+      openResultsBtn.textContent = "פתח תוצאות";
+      openResultsBtn.addEventListener("click", () => {
+        setAdminTab("learning");
+      });
+      actions.appendChild(openResultsBtn);
+    }
+
+    card.appendChild(header);
+    card.appendChild(body);
+    card.appendChild(meta);
+    if (actions.childNodes.length > 0) {
+      card.appendChild(actions);
+    }
+    dom.adminInboxList.appendChild(card);
+  });
+}
+
+function openIssueReportModal() {
+  if (!dom.reportIssueModal || !dom.reportIssueForm) {
+    return;
+  }
+  dom.reportIssueForm.reset();
+  if (dom.reportIssueNameInput) {
+    dom.reportIssueNameInput.value = normalizeSpace(gameState.playerName);
+  }
+  hideMessage(dom.reportIssueMsg);
+  dom.reportIssueModal.classList.remove("hidden");
+  dom.reportIssueTextInput?.focus();
+}
+
+function closeIssueReportModal() {
+  if (!dom.reportIssueModal) {
+    return;
+  }
+  dom.reportIssueModal.classList.add("hidden");
+}
+
+async function submitIssueReport(event) {
+  event.preventDefault();
+  hideMessage(dom.reportIssueMsg);
+
+  const text = normalizeSpace(dom.reportIssueTextInput?.value);
+  if (text.length < 10) {
+    showMessage(dom.reportIssueMsg, "יש לפרט תקלה בלפחות 10 תווים.", false);
+    return;
+  }
+
+  const screenId = getCurrentVisibleScreenId();
+  const currentQuestion = gameState.questions?.[gameState.index];
+  const report = sanitizeIssueReport({
+    id: uid("issue"),
+    text,
+    submitterName: normalizeSpace(dom.reportIssueNameInput?.value) || normalizeSpace(gameState.playerName),
+    playerName: normalizeSpace(gameState.playerName),
+    screenId,
+    screenLabel: getScreenLabelById(screenId),
+    quickMode: normalizeQuickMode(gameState.quickMode),
+    entryDepartment: normalizeEntryDepartment(gameState.entryDepartment),
+    questionId: normalizeSpace(currentQuestion?.id),
+    submittedAt: new Date().toISOString(),
+  });
+
+  const saved = writeIssueReports([report, ...readIssueReports()]);
+  if (!saved) {
+    showMessage(dom.reportIssueMsg, "שמירת הדיווח נכשלה. נסה שוב.", false);
+    return;
+  }
+
+  await pushPublicIssueReportToBackend(report);
+  showMessage(dom.reportIssueMsg, "הדיווח נשלח בהצלחה למנהלים.", true);
+  if (adminState.currentAdmin?.id) {
+    renderAdminInbox();
+  }
+  updateAdminInboxBadge();
+  window.setTimeout(() => {
+    closeIssueReportModal();
+  }, 700);
+}
+
 function normalizeAdminTab(value) {
   const raw = normalizeSpace(value).toLowerCase();
+  if (raw === "inbox") {
+    return "inbox";
+  }
   if (raw === "content") {
     return "content";
   }
@@ -4361,6 +4901,13 @@ function setAdminTab(tab) {
     renderAllQuestionsManager();
     renderQuestionAuditReport();
   }
+  if (nextTab === "learning") {
+    markAllAttemptsAsSeen();
+  }
+  if (nextTab === "inbox") {
+    renderAdminInbox();
+  }
+  updateAdminInboxBadge();
 }
 
 function setAdminMode(mode) {
@@ -4899,6 +5446,7 @@ function openAdminPanel() {
   renderActivities();
   renderDrafts();
   renderCustomQuestions();
+  renderAdminInbox();
   renderLongTextDraftsPreview();
   if (adminState.longTextAnalysis) {
     setLongTextTopicTitle(adminState.longTextAnalysis);
@@ -4911,8 +5459,10 @@ function openAdminPanel() {
   hideMessage(dom.adminUserFormMsg);
   hideMessage(dom.adminPasswordFormMsg);
   hideMessage(dom.longTextMsg);
+  hideMessage(dom.adminInboxMsg);
   hideDraftQueueMessage();
   showScreen("screenAdminPanel");
+  updateAdminInboxBadge();
   runAdminSystemCheck().catch(() => {});
 }
 
@@ -4920,6 +5470,7 @@ function renderAdminStats() {
   const attempts = readStorage(STORAGE_KEYS.attempts, []);
   const activities = readStorage(STORAGE_KEYS.activities, []);
   const drafts = readDraftQueue();
+  const inboxUnread = getInboxUnreadCounts();
   const inventory = getQuestionInventory();
   const totalQuestions = inventory.activeQuestions.length;
   const disabledQuestions = inventory.disabledIds.size;
@@ -4949,6 +5500,7 @@ function renderAdminStats() {
     { label: "פקיעות זמן", value: totalTimeouts },
     { label: "טיוטות ממתינות", value: drafts.length },
     { label: "פעילויות שהוזנו", value: activities.length },
+    { label: "התראות חדשות", value: inboxUnread.total },
   ];
 
   dom.adminStats.innerHTML = "";
@@ -8681,6 +9233,13 @@ function saveAttempt(attempt) {
   const attempts = readStorage(STORAGE_KEYS.attempts, []);
   const nextAttempts = [attempt, ...attempts].slice(0, 500);
   writeStorage(STORAGE_KEYS.attempts, nextAttempts);
+  if (adminState.currentAdmin?.id) {
+    renderAdminStats();
+    renderAttemptsTable();
+    renderLearningMetrics();
+    renderAdminInbox();
+  }
+  updateAdminInboxBadge();
   pushPublicAttemptToBackend(attempt);
 }
 

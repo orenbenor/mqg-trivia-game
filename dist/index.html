@@ -258,6 +258,16 @@
             type="button"
             role="tab"
             aria-selected="false"
+            data-admin-tab-target="inbox"
+          >
+            הודעות נכנסות
+            <span id="adminInboxBadge" class="admin-tab-count hidden">0</span>
+          </button>
+          <button
+            class="admin-tab-btn"
+            type="button"
+            role="tab"
+            aria-selected="false"
             data-admin-tab-target="content"
           >
             הוסף תוכן חדש
@@ -333,6 +343,25 @@
                   מעקב תוצאות שחקנים
                 </button>
               </div>
+            </section>
+          </section>
+
+          <section
+            class="admin-tab-panel hidden"
+            data-admin-tab-panel="inbox"
+            role="tabpanel"
+            aria-hidden="true"
+          >
+            <section class="admin-section admin-section-first">
+              <div class="section-head">
+                <h3>הודעות נכנסות</h3>
+                <div class="inline-actions">
+                  <button id="adminInboxMarkAllSeenBtn" type="button" class="ghost-btn">סמן הכל כנצפה</button>
+                </div>
+              </div>
+              <p id="adminInboxSummary" class="muted tight"></p>
+              <p id="adminInboxMsg" class="form-msg hidden"></p>
+              <div id="adminInboxList" class="cards-list"></div>
             </section>
           </section>
 
@@ -810,6 +839,7 @@
     <div class="always-actions">
       <button id="newGameAnytimeBtn" class="secondary-btn" type="button">משחק חדש בכל שלב</button>
       <button id="homeAnytimeBtn" class="ghost-btn" type="button">מסך הבית</button>
+      <button id="reportIssueAnytimeBtn" class="ghost-btn" type="button">דווח על תקלה</button>
     </div>
 
     <audio id="bgMusic" loop preload="auto">
@@ -824,6 +854,42 @@
         <button id="musicUpBtn" class="ghost-btn mini-btn" type="button">+</button>
       </div>
       <p id="musicLevelText" class="music-level">עוצמה: 12%</p>
+    </div>
+
+    <div
+      id="reportIssueModal"
+      class="modal hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="reportIssueTitle"
+    >
+      <div class="modal-card">
+        <div class="section-head">
+          <h3 id="reportIssueTitle">דווח על תקלה</h3>
+          <button id="reportIssueCloseBtn" type="button" class="ghost-btn">סגור</button>
+        </div>
+        <form id="reportIssueForm" class="form-grid">
+          <label class="field full">
+            <span>מה הבעיה?</span>
+            <textarea
+              id="reportIssueTextInput"
+              rows="5"
+              maxlength="1200"
+              placeholder="תאר מה לא עובד, באיזה שלב, ומה ציפית שיקרה."
+              required
+            ></textarea>
+          </label>
+          <label class="field">
+            <span>שם (אופציונלי)</span>
+            <input id="reportIssueNameInput" type="text" maxlength="60" placeholder="אפשר להשאיר ריק" />
+          </label>
+          <div class="actions-row">
+            <button id="reportIssueSubmitBtn" type="submit" class="primary-btn">שלח דיווח</button>
+            <button id="reportIssueCancelBtn" type="button" class="ghost-btn">ביטול</button>
+          </div>
+        </form>
+        <p id="reportIssueMsg" class="form-msg hidden"></p>
+      </div>
     </div>
 
     <script src="config.js"></script>

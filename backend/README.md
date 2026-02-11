@@ -17,6 +17,7 @@ Cloud backend for admin auth + shared game state sync.
   - overrides
   - question cycles
 - Public attempts ingestion (optional) with `PUBLIC_WRITE_KEY`
+- Public issue reports ingestion (optional) with `PUBLIC_WRITE_KEY`
 - Rate limiting + login lockout + sqlite backups
 
 ## Quick start
@@ -62,7 +63,7 @@ Default URL: `http://localhost:8787`
   - `DEFAULT_ADMIN_USERNAME`
   - `DEFAULT_ADMIN_PASSWORD`
   - `MIN_PASSWORD_LENGTH`
-  - `PUBLIC_WRITE_KEY` (if using public attempt sync)
+  - `PUBLIC_WRITE_KEY` (if using public attempt + issue-report sync)
 - Use durable storage for:
   - `DB_PATH`
   - `BACKUP_DIR`

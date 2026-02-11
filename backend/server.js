@@ -147,6 +147,33 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function sanitizePublicIssueReport(reportInput) {
+  const report = reportInput && typeof reportInput === "object" ? reportInput : null;
+  if (!report) {
+    return null;
+  }
+
+  const text = String(report.text || "").trim();
+  if (text.length < 5 || text.length > 2000) {
+    return null;
+  }
+
+  const id = String(report.id || generateId("issue")).trim() || generateId("issue");
+  return {
+    id,
+    type: "issue_report",
+    text,
+    submitterName: String(report.submitterName || "").trim().slice(0, 60),
+    playerName: String(report.playerName || "").trim().slice(0, 60),
+    screenId: String(report.screenId || "screenLanding").trim().slice(0, 60),
+    screenLabel: String(report.screenLabel || "").trim().slice(0, 120),
+    quickMode: String(report.quickMode || "").trim().slice(0, 40),
+    entryDepartment: String(report.entryDepartment || "").trim().slice(0, 40),
+    questionId: String(report.questionId || "").trim().slice(0, 80),
+    submittedAt: String(report.submittedAt || nowIso()).trim() || nowIso(),
+  };
+}
+
 function generateId(prefix) {
   return `${prefix}_${crypto.randomBytes(8).toString("hex")}`;
 }
@@ -559,6 +586,40 @@ app.post(
 
   const nextAttempts = [attempt, ...attempts].slice(0, 500);
   upsertState("mqg_trivia_attempts_v3", nextAttempts, "public");
+  res.json({ ok: true });
+});
+
+app.post(
+  "/api/public/issue-report",
+  rateLimitMiddleware("public_issue_report", PUBLIC_RATE_WINDOW_MS, PUBLIC_RATE_MAX),
+  (req, res) => {
+  if (!PUBLIC_WRITE_KEY) {
+    return res.status(403).json({ ok: false, error: "PUBLIC_WRITE_DISABLED" });
+  }
+
+  const incomingKey = String(req.headers["x-public-key"] || "").trim();
+  if (!incomingKey || incomingKey !== PUBLIC_WRITE_KEY) {
+    return res.status(401).json({ ok: false, error: "INVALID_PUBLIC_KEY" });
+  }
+
+  const report = sanitizePublicIssueReport(req.body?.report);
+  if (!report) {
+    return res.status(400).json({ ok: false, error: "INVALID_REPORT" });
+  }
+
+  let reports = [];
+  const existing = db.prepare("SELECT state_value FROM state_store WHERE state_key = ?").get("mqg_issue_reports_v1");
+  if (existing?.state_value) {
+    try {
+      const parsed = JSON.parse(existing.state_value);
+      reports = Array.isArray(parsed) ? parsed : [];
+    } catch (_err) {
+      reports = [];
+    }
+  }
+
+  const nextReports = [report, ...reports].slice(0, 500);
+  upsertState("mqg_issue_reports_v1", nextReports, "public");
   res.json({ ok: true });
 });
 
