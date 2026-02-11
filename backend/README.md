@@ -18,6 +18,7 @@ Cloud backend for admin auth + shared game state sync.
   - question cycles
 - Public attempts ingestion (optional) with `PUBLIC_WRITE_KEY`
 - Public issue reports ingestion (optional) with `PUBLIC_WRITE_KEY`
+- Optional self-keepalive ping (free cold-start mitigation)
 - Rate limiting + login lockout + sqlite backups
 
 ## Quick start
@@ -68,6 +69,16 @@ Default URL: `http://localhost:8787`
   - `DB_PATH`
   - `BACKUP_DIR`
 - Keep `SESSION_COOKIE_SAMESITE=none` when frontend/backend are on different domains.
+
+## Free cold-start mitigation
+
+If you stay on a free hosting tier, you can enable internal keepalive:
+
+- `ENABLE_SELF_KEEPALIVE=true`
+- `SELF_KEEPALIVE_URL=https://mqg-trivia-backend.onrender.com`
+- `SELF_KEEPALIVE_INTERVAL_MS=240000`
+
+This schedules a lightweight self-ping to `/api/health` every 4 minutes.
 
 ## Frontend integration
 

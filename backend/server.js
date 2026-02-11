@@ -52,6 +52,9 @@ const BACKUP_DIR = process.env.BACKUP_DIR
   : path.resolve(__dirname, "backups");
 const BACKUP_INTERVAL_MINUTES = Math.max(0, Number(process.env.BACKUP_INTERVAL_MINUTES || 60));
 const BACKUP_KEEP_FILES = Math.max(3, Number(process.env.BACKUP_KEEP_FILES || 48));
+const ENABLE_SELF_KEEPALIVE = String(process.env.ENABLE_SELF_KEEPALIVE || "false").trim().toLowerCase() === "true";
+const SELF_KEEPALIVE_INTERVAL_MS = Math.max(60_000, Number(process.env.SELF_KEEPALIVE_INTERVAL_MS || 4 * 60_000));
+const SELF_KEEPALIVE_URL = cleanEnvText(process.env.SELF_KEEPALIVE_URL || process.env.RENDER_EXTERNAL_URL || "");
 
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 fs.mkdirSync(BACKUP_DIR, { recursive: true });
@@ -350,6 +353,24 @@ async function runBackup() {
     });
   } finally {
     backupInProgress = false;
+  }
+}
+
+async function runSelfKeepaliveTick() {
+  if (!ENABLE_SELF_KEEPALIVE || !SELF_KEEPALIVE_URL || typeof fetch !== "function") {
+    return;
+  }
+
+  const target = `${SELF_KEEPALIVE_URL.replace(/\/+$/, "")}/api/health?selfKeepalive=1`;
+  try {
+    await fetch(target, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      keepalive: true,
+    });
+  } catch (_err) {
+    // ignore transient keepalive errors
   }
 }
 
@@ -897,4 +918,19 @@ app.listen(PORT, () => {
   // eslint-disable-next-line no-console
   console.log(`Backups directory: ${BACKUP_DIR} (every ${BACKUP_INTERVAL_MINUTES} minutes)`);
   runBackup().catch(() => {});
+
+  if (ENABLE_SELF_KEEPALIVE && SELF_KEEPALIVE_URL) {
+    // eslint-disable-next-line no-console
+    console.log(`Self keepalive enabled -> ${SELF_KEEPALIVE_URL}/api/health every ${Math.round(SELF_KEEPALIVE_INTERVAL_MS / 1000)}s`);
+    runSelfKeepaliveTick().catch(() => {});
+    const keepaliveTimer = setInterval(() => {
+      runSelfKeepaliveTick().catch(() => {});
+    }, SELF_KEEPALIVE_INTERVAL_MS);
+    if (typeof keepaliveTimer.unref === "function") {
+      keepaliveTimer.unref();
+    }
+  } else {
+    // eslint-disable-next-line no-console
+    console.log("Self keepalive disabled.");
+  }
 });

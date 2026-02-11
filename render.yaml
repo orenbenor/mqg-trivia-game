@@ -43,6 +43,12 @@ services:
         value: a80732e8237d1cdb0e35c0ed1c4e046e2381247a0e9eaadb
       - key: CORS_ORIGIN
         value: https://mqg-trivia-game.onrender.com
+      - key: ENABLE_SELF_KEEPALIVE
+        value: true
+      - key: SELF_KEEPALIVE_INTERVAL_MS
+        value: 240000
+      - key: SELF_KEEPALIVE_URL
+        value: https://mqg-trivia-backend.onrender.com
       - key: DEFAULT_ADMIN_USERNAME
         sync: false
       - key: DEFAULT_ADMIN_PASSWORD

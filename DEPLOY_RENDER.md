@@ -50,7 +50,9 @@
 כדי לקבל ביצועים עקביים ומהירים בכל שעה:
 
 1. מומלץ להעביר את `mqg-trivia-backend` לתוכנית בתשלום (Always On).
-2. אם נשארים על `free`, הגדר שירות ניטור חיצוני (למשל UptimeRobot) שיפגע כל 5 דקות ב:
-   - `https://mqg-trivia-backend.onrender.com/api/health`
+2. אם נשארים על `free`, ה־backend כולל keepalive פנימי מובנה (ללא שירות חיצוני):
+   - `ENABLE_SELF_KEEPALIVE=true`
+   - `SELF_KEEPALIVE_URL=https://mqg-trivia-backend.onrender.com`
+   - `SELF_KEEPALIVE_INTERVAL_MS=240000`
 
 בנוסף, ה־frontend כבר כולל warmup אוטומטי (preconnect + ping ברקע) כדי לקצר זמני המתנה בפועל.
