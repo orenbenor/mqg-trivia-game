@@ -4,4 +4,7 @@ window.MQG_BACKEND_CONFIG = {
   syncIntervalMs: 15000,
   publicWriteKey: "a80732e8237d1cdb0e35c0ed1c4e046e2381247a0e9eaadb",
   allowInsecureLocalFallback: false,
+  warmupOnLoad: true,
+  warmupIntervalMs: 240000,
+  warmupRequestTimeoutMs: 4500,
 };

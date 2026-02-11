@@ -79,6 +79,9 @@ const BACKEND_DEFAULT_CONFIG = {
   syncIntervalMs: 15000,
   publicWriteKey: "",
   allowInsecureLocalFallback: false,
+  warmupOnLoad: true,
+  warmupIntervalMs: 4 * 60_000,
+  warmupRequestTimeoutMs: 4500,
 };
 const LEARNING_ALERT_SETTINGS_DEFAULT = {
   minAttemptsForAlerts: 4,
@@ -1317,6 +1320,13 @@ const appUpdateState = {
   reloadTimerId: null,
 };
 
+const backendWarmupState = {
+  inFlight: false,
+  lastAt: 0,
+  timerId: null,
+  initialized: false,
+};
+
 const dom = {
   appUpdateBanner: document.getElementById("appUpdateBanner"),
   appUpdateReloadBtn: document.getElementById("appUpdateReloadBtn"),
@@ -1510,6 +1520,7 @@ updateAdminInboxBadge();
 updateTimerUI(QUESTION_TIMEOUT_SECONDS);
 dom.hourglassIcon.style.animationPlayState = "paused";
 initMusic();
+initBackendWarmup();
 
 function bindEvents() {
   dom.musicDownBtn.addEventListener("click", () => {
@@ -1579,6 +1590,7 @@ function bindEvents() {
   });
 
   dom.goAdminBtn.addEventListener("click", () => {
+    warmupBackend("admin_entry");
     dom.adminUsernameInput.value = "";
     dom.adminPasswordInput.value = "";
     hideMessage(dom.adminLoginError);
@@ -1610,6 +1622,7 @@ function bindEvents() {
 
     try {
       if (isBackendEnabled()) {
+        warmupBackend("admin_login_click");
         const payload = await loginWithBackend(username, password);
         const remoteUsername = normalizeSpace(payload?.admin?.username);
         if (!remoteUsername) {
@@ -1938,6 +1951,13 @@ function bindEvents() {
     },
     { passive: true },
   );
+
+  window.addEventListener("beforeunload", () => {
+    if (backendWarmupState.timerId) {
+      window.clearInterval(backendWarmupState.timerId);
+      backendWarmupState.timerId = null;
+    }
+  });
 }
 
 function resetQuestionCyclesFlow() {
@@ -4159,11 +4179,81 @@ function resolveBackendConfig() {
   merged.syncIntervalMs = Math.max(5000, Number(merged.syncIntervalMs) || BACKEND_DEFAULT_CONFIG.syncIntervalMs);
   merged.publicWriteKey = normalizeSpace(merged.publicWriteKey);
   merged.allowInsecureLocalFallback = Boolean(merged.allowInsecureLocalFallback);
+  merged.warmupOnLoad = Boolean(merged.warmupOnLoad);
+  merged.warmupIntervalMs = Math.max(60_000, Number(merged.warmupIntervalMs) || BACKEND_DEFAULT_CONFIG.warmupIntervalMs);
+  merged.warmupRequestTimeoutMs = Math.max(
+    1200,
+    Number(merged.warmupRequestTimeoutMs) || BACKEND_DEFAULT_CONFIG.warmupRequestTimeoutMs,
+  );
   return merged;
 }
 
 function isBackendEnabled() {
   return Boolean(backendConfig.enabled && backendConfig.baseUrl);
+}
+
+function warmupBackend(reason = "generic") {
+  if (!isBackendEnabled()) {
+    return Promise.resolve(false);
+  }
+
+  const nowTs = Date.now();
+  const minGapMs = 9000;
+  if (backendWarmupState.inFlight || nowTs - backendWarmupState.lastAt < minGapMs) {
+    return Promise.resolve(false);
+  }
+
+  backendWarmupState.inFlight = true;
+  backendWarmupState.lastAt = nowTs;
+
+  const timeoutMs = backendConfig.warmupRequestTimeoutMs;
+  const controller = typeof AbortController === "function" ? new AbortController() : null;
+  const timeoutId = window.setTimeout(() => {
+    if (controller) {
+      controller.abort();
+    }
+  }, timeoutMs);
+
+  return fetch(`${backendConfig.baseUrl}/api/health?warmup=${encodeURIComponent(reason)}`, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    credentials: "omit",
+    cache: "no-store",
+    keepalive: true,
+    signal: controller ? controller.signal : undefined,
+  })
+    .catch(() => null)
+    .finally(() => {
+      window.clearTimeout(timeoutId);
+      backendWarmupState.inFlight = false;
+    });
+}
+
+function initBackendWarmup() {
+  if (backendWarmupState.initialized || !backendConfig.warmupOnLoad || !isBackendEnabled()) {
+    return;
+  }
+  backendWarmupState.initialized = true;
+
+  const warmupOnVisible = () => {
+    if (document.visibilityState === "visible") {
+      warmupBackend("visible");
+    }
+  };
+
+  window.setTimeout(() => {
+    warmupBackend("app_load");
+  }, 120);
+
+  document.addEventListener("visibilitychange", warmupOnVisible);
+  window.addEventListener("focus", () => warmupBackend("focus"), { passive: true });
+  window.addEventListener("online", () => warmupBackend("online"), { passive: true });
+
+  backendWarmupState.timerId = window.setInterval(() => {
+    if (document.visibilityState === "visible") {
+      warmupBackend("interval");
+    }
+  }, backendConfig.warmupIntervalMs);
 }
 
 async function apiRequest(path, options = {}) {
