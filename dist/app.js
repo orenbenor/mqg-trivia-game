@@ -4607,6 +4607,28 @@ function markAllAttemptsAsSeen({ showFeedback = false } = {}) {
   updateAdminInboxBadge();
 }
 
+function markAllIssueReportsAsSeen({ showFeedback = false } = {}) {
+  if (!adminState.currentAdmin?.id) {
+    return;
+  }
+  const seenState = getCurrentAdminInboxSeenState();
+  const issueIds = readIssueReports().map((report) => buildIssueInboxKey(report));
+  const nextState = {
+    ...seenState,
+    issueIds: mergeUniqueIds(seenState.issueIds, issueIds),
+  };
+  const saved = saveCurrentAdminInboxSeenState(nextState);
+  if (showFeedback && dom.adminInboxMsg) {
+    if (saved) {
+      showMessage(dom.adminInboxMsg, "כל דיווחי התקלה סומנו כנצפו.", true);
+    } else {
+      showMessage(dom.adminInboxMsg, "שמירת מצב צפייה נכשלה.", false);
+    }
+  }
+  renderAdminInbox();
+  updateAdminInboxBadge();
+}
+
 function markAllInboxItemsAsSeen() {
   if (!adminState.currentAdmin?.id) {
     return;
@@ -4905,7 +4927,7 @@ function setAdminTab(tab) {
     markAllAttemptsAsSeen();
   }
   if (nextTab === "inbox") {
-    renderAdminInbox();
+    markAllIssueReportsAsSeen();
   }
   updateAdminInboxBadge();
 }
