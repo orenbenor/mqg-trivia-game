@@ -848,14 +848,19 @@
       <source src="assets/audio/mqg-theme.mp3" type="audio/mpeg" />
     </audio>
 
-    <div id="musicControls" class="music-controls">
-      <p class="music-title">מוזיקת רקע</p>
-      <div class="music-row">
-        <button id="musicDownBtn" class="ghost-btn mini-btn" type="button">-</button>
-        <button id="musicMuteBtn" class="secondary-btn mini-btn" type="button">השתק</button>
-        <button id="musicUpBtn" class="ghost-btn mini-btn" type="button">+</button>
+    <div id="musicControls" class="music-controls collapsed">
+      <button id="musicToggleBtn" class="secondary-btn music-toggle-btn" type="button" aria-expanded="false">
+        פתח מוזיקה
+      </button>
+      <div id="musicPanelBody" class="music-panel-body hidden">
+        <p class="music-title">מוזיקת רקע</p>
+        <div class="music-row">
+          <button id="musicDownBtn" class="ghost-btn mini-btn" type="button">-</button>
+          <button id="musicMuteBtn" class="secondary-btn mini-btn" type="button">השתק</button>
+          <button id="musicUpBtn" class="ghost-btn mini-btn" type="button">+</button>
+        </div>
+        <p id="musicLevelText" class="music-level">עוצמה: 12%</p>
       </div>
-      <p id="musicLevelText" class="music-level">עוצמה: 12%</p>
     </div>
 
     <div

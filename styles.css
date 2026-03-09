@@ -1142,6 +1142,30 @@ th {
   gap: 0.38rem;
 }
 
+.music-controls.collapsed {
+  width: auto;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.music-toggle-btn {
+  width: 100%;
+  box-shadow: 0 10px 24px rgba(4, 30, 58, 0.22);
+  white-space: nowrap;
+}
+
+.music-controls.collapsed .music-toggle-btn {
+  width: auto;
+  min-width: 112px;
+}
+
+.music-panel-body {
+  display: grid;
+  gap: 0.38rem;
+}
+
 .music-title {
   margin: 0;
   color: var(--navy-700);

@@ -1292,6 +1292,7 @@ const gameState = {
   feedbackDeepOpen: false,
   wrong: [],
   musicStarted: false,
+  musicCollapsed: true,
   adaptiveMode: false,
   adaptiveConfidence: 0,
   adaptiveSignals: 0,
@@ -1334,6 +1335,8 @@ const dom = {
   screenQuiz: document.getElementById("screenQuiz"),
   bgMusic: document.getElementById("bgMusic"),
   musicControls: document.getElementById("musicControls"),
+  musicToggleBtn: document.getElementById("musicToggleBtn"),
+  musicPanelBody: document.getElementById("musicPanelBody"),
   musicDownBtn: document.getElementById("musicDownBtn"),
   musicUpBtn: document.getElementById("musicUpBtn"),
   musicMuteBtn: document.getElementById("musicMuteBtn"),
@@ -1523,6 +1526,10 @@ initMusic();
 initBackendWarmup();
 
 function bindEvents() {
+  dom.musicToggleBtn.addEventListener("click", () => {
+    setMusicCollapsed(!gameState.musicCollapsed);
+    ensureMusicPlayback();
+  });
   dom.musicDownBtn.addEventListener("click", () => {
     updateMusicVolume((dom.bgMusic.volume || MUSIC_DEFAULT_VOLUME) - 0.06);
     ensureMusicPlayback();
@@ -2361,10 +2368,12 @@ function initMusic() {
     1,
   );
   const muted = Boolean(settings.muted);
+  const collapsed = typeof settings.collapsed === "boolean" ? settings.collapsed : true;
 
   dom.bgMusic.volume = volume;
   dom.bgMusic.muted = muted;
   dom.bgMusic.loop = true;
+  gameState.musicCollapsed = collapsed;
   renderMusicUi();
 }
 
@@ -2392,10 +2401,17 @@ function updateMusicVolume(nextValue) {
   renderMusicUi();
 }
 
+function setMusicCollapsed(nextValue) {
+  gameState.musicCollapsed = Boolean(nextValue);
+  saveMusicSettings();
+  renderMusicUi();
+}
+
 function saveMusicSettings() {
   writeStorage(STORAGE_KEYS.musicSettings, {
     volume: dom.bgMusic.volume,
     muted: dom.bgMusic.muted,
+    collapsed: gameState.musicCollapsed,
   });
 }
 
@@ -2405,6 +2421,12 @@ function renderMusicUi() {
     ? `עוצמה: ${volumePercent}% (מושתק)`
     : `עוצמה: ${volumePercent}%`;
   dom.musicMuteBtn.textContent = dom.bgMusic.muted ? "בטל השתקה" : "השתק";
+  dom.musicControls.classList.toggle("collapsed", gameState.musicCollapsed);
+  dom.musicPanelBody.classList.toggle("hidden", gameState.musicCollapsed);
+  dom.musicToggleBtn.setAttribute("aria-expanded", gameState.musicCollapsed ? "false" : "true");
+  dom.musicToggleBtn.textContent = gameState.musicCollapsed
+    ? (dom.bgMusic.muted ? "פתח מוזיקה (מושתק)" : "פתח מוזיקה")
+    : "סגור מוזיקה";
 }
 
 function resetAndGoToNewGame() {
