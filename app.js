@@ -376,19 +376,38 @@ const QUICK_MODES = {
 };
 
 const GENERATED_TOPIC_STEMS = [
-  "איזו קביעה משקפת בצורה הטובה ביותר את עמדת התנועה בנושא {topic}?",
-  "לפי עקרונות המהלך בנושא {topic}, מהו הצעד הנכון ביותר?",
-  "מה מהבאים תואם למדיניות אחראית שנדרשת בנושא {topic}?",
-  "בהיבט של שלטון החוק, איזו אמירה נכונה לגבי {topic}?",
-  "איזה מהמשפטים הבאים מתאר נכון את היעד המרכזי בנושא {topic}?",
-  "מהו הדגש העיקרי שעליו מצביע הדיון הציבורי סביב {topic}?",
-  "כאשר בוחנים יישום בפועל של {topic}, מה נכון לומר?",
-  "איזו אפשרות מייצגת גישה מוסדית תקינה בנושא {topic}?",
+  "במסגרת {topic}, מה נכון במיוחד לגבי \"{focus}\"?",
+  "כאשר בוחנים את {topic}, איזה ניסוח משקף את הדגש על \"{focus}\"?",
+  "איזו קביעה מתאימה ביותר לעקרונות {topic} בהקשר של \"{focus}\"?",
+  "בהיבט של יישום מעשי בתוך {topic}, מה נכון לומר על \"{focus}\"?",
+  "איזה מהמשפטים הבאים מתאר נכון את הכיוון של {topic} סביב \"{focus}\"?",
+  "מהו המסר המרכזי שעולה מתוך {topic} כשמתמקדים ב\"{focus}\"?",
+  "בקריאה אזרחית של {topic}, איזו אפשרות מדויקת ביחס ל\"{focus}\"?",
+  "איזו גישה מוסדית תקינה יותר ב-{topic} כאשר הסוגיה היא \"{focus}\"?",
+  "כאשר מנתחים את {topic}, איזו מסקנה משתלבת עם הדגש על \"{focus}\"?",
+  "איזו תשובה משקפת בצורה האחראית ביותר את {topic} בנושא \"{focus}\"?",
+  "בבחינה של מדיניות ציבורית ב-{topic}, מה נכון ביחס ל\"{focus}\"?",
+  "איזו עמדה מתיישבת עם הערכים שמודגשים ב-{topic} סביב \"{focus}\"?",
 ];
 const SOURCE_BACKED_TOPIC_PROMPTS = [
-  "לפי פרסומי התנועה, איזו קביעה משקפת נכון את המסר בנושא {topic}?",
-  "איזו מהאפשרויות נתמכת ישירות במקור שפורסם בנושא {topic}?",
-  "בהתאם לפרסום הרשמי בנושא {topic}, מה נכון לומר?",
+  "לפי פרסומי התנועה בנושא {topic}, מה נאמר במפורש לגבי \"{focus}\"?",
+  "במקור הרשמי על {topic}, איזה דגש מופיע ביחס ל\"{focus}\"?",
+  "כאשר קוראים את הפרסום על {topic}, מהי הקביעה הנתמכת סביב \"{focus}\"?",
+  "איזו טענה מופיעה במקור של התנועה על {topic} בהקשר של \"{focus}\"?",
+  "בהתבסס על הפרסום בנושא {topic}, איזה ניסוח תואם את ההתייחסות ל\"{focus}\"?",
+  "מהו המסר הרשמי של התנועה בנושא {topic} לגבי \"{focus}\"?",
+  "בקריאת המקור על {topic}, מה נכון במיוחד לומר על \"{focus}\"?",
+  "איזה מהניסוחים הבאים משחזר נכון את עמדת התנועה ב-{topic} סביב \"{focus}\"?",
+  "לפי החומר שפורסם על {topic}, איזו קביעה מדויקת ביחס ל\"{focus}\"?",
+  "איזו אמירה נתמכת ישירות בפרסום של התנועה על {topic} בנוגע ל\"{focus}\"?",
+  "מה מודגש במקור הרשמי של התנועה על {topic} כשבוחנים את \"{focus}\"?",
+  "כאשר מתמקדים ב\"{focus}\" בתוך הפרסום על {topic}, איזו אפשרות נכונה?",
+];
+const TOPIC_REPEAT_ANGLES = [
+  "במבט על המשמעות הציבורית",
+  "בהיבט של יישום מוסדי",
+  "בזווית של אחריות שלטונית",
+  "מנקודת מבט של למידה מעשית",
 ];
 
 const TELEMARKETING_ACTIVITY_TOPIC_CONFIGS = [
@@ -399,6 +418,9 @@ const TELEMARKETING_ACTIVITY_TOPIC_CONFIGS = [
     category: "מערכת המשפט ומינויים",
     kind: "activity",
     date: "2026-02-09",
+    sourceLabel: "ועדת חקירה ממלכתית ל-7 באוקטובר - פרסומי התנועה",
+    sourceQuery: "ועדת חקירה ממלכתית 7 באוקטובר אתר mqg",
+    sourceAnchorText: "ועדת חקירה ממלכתית עצמאית, אמינה ובלתי תלויה",
     learn:
       "הדגש בנושא זה הוא חקירה עצמאית, אמינה ומבוססת נתונים, עם מסקנות שניתנות ליישום ממשי.",
     facts: [
@@ -440,6 +462,9 @@ const TELEMARKETING_ACTIVITY_TOPIC_CONFIGS = [
     category: "שוויון בנטל",
     kind: "activity",
     date: "2026-02-09",
+    sourceLabel: "שוויון בנטל - פרסומי התנועה",
+    sourceQuery: "שוויון בנטל אתר mqg",
+    sourceAnchorText: "חובת שירות הוגנת, שקופה ואכיפה עקבית",
     learn:
       "הקו המרכזי הוא חובת שירות הוגנת, שקופה ואכיפה עקבית שמגובה בנתונים ומדדי ביצוע.",
     facts: [
@@ -452,12 +477,16 @@ const TELEMARKETING_ACTIVITY_TOPIC_CONFIGS = [
       "לכידות חברתית מתחזקת כשחלוקת הנטל נתפסת כהוגנת.",
       "המדינה אחראית ליישום בפועל ולא רק להצגת יעדים.",
       "תמריצים לבדם לא מספיקים ללא מנגנון אכיפה ברור.",
-      "פיקוח פרלמנטרי קבוע מחזק אמון בהחלטות בנושא השירות.",
+      "מערכי מיון ושיבוץ מקצועיים נדרשים כדי ליישם שוויון בנטל באופן עקבי.",
       "ניטור חודשי של נתוני גיוס מאפשר תיקון מהיר בזמן אמת.",
       "הסדרה ארוכת טווח דורשת מדדי הצלחה ברורים מראש.",
       "השתמטות שיטתית פוגעת בעיקרון השוויון בפני החוק.",
       "מסלולי שירות מותאמים יכולים לשפר השתלבות בלי לפגוע בעיקרון השוויון.",
       "שילוב בין יעדים, אכיפה ושקיפות הוא בסיס למדיניות יציבה.",
+      "אכיפה שוויונית מחייבת מניעת מסלולי התחמקות בלתי מפוקחים.",
+      "פער בין יעדי גיוס לביצוע בפועל מחייב תיקון מדיניות מהיר ושקוף.",
+      "חלוקת עומס בין שירות סדיר, מילואים ושירות חלופי צריכה להיות גלויה לציבור.",
+      "אמון הציבור נפגע כאשר אין רצף בין פסיקה משפטית ליישום ממשלתי בפועל.",
     ],
     distractors: [
       "שוויון בנטל יכול להישען על הצהרות בלבד ללא מדדי ביצוע.",
@@ -481,6 +510,9 @@ const TELEMARKETING_ACTIVITY_TOPIC_CONFIGS = [
     category: "מערכת המשפט ומינויים",
     kind: "activity",
     date: "2026-02-09",
+    sourceLabel: "ההפיכה המשפטית - פרסומי התנועה",
+    sourceQuery: "ההפיכה המשפטית אתר mqg",
+    sourceAnchorText: "שמירה על איזונים ובלמים, עצמאות שיפוטית והליכי חקיקה אחראיים",
     learn:
       "הדגש הוא שמירה על איזונים ובלמים, עצמאות שיפוטית והליכי חקיקה אחראיים שמגנים על זכויות יסוד.",
     facts: [
@@ -499,6 +531,14 @@ const TELEMARKETING_ACTIVITY_TOPIC_CONFIGS = [
       "אמון ציבורי נשען על תפיסה של עצמאות מקצועית ולא תלות פוליטית.",
       "הגבלת כוח שלטוני דורשת כללים ברורים ואכיפים.",
       "רפורמה מאוזנת נמדדת ביכולת לשמור על משילות לצד זכויות.",
+      "דיון חוקתי אחראי מחייב בחינת השפעה גם על רשויות אכיפה ושומרי סף.",
+      "עצמאות שומרי הסף מסייעת לזהות חריגות שלטוניות בזמן אמת.",
+      "פיצול סמכויות אפקטיבי מגן על הציבור גם בתקופות של רוב פוליטי חזק.",
+      "שינוי כללי יסוד ללא הסכמה רחבה עלול לערער את יציבות המערכת.",
+      "בקרה מקצועית על הליכי חקיקה מפחיתה סיכון לשגיאות בלתי הפיכות.",
+      "מערכת משפט עצמאית מגינה גם על אמינות ההתחייבויות של המדינה.",
+      "דיון ציבורי שקוף ברפורמות מוסדיות מחייב הנגשת נוסחים, נתונים ולוחות זמנים.",
+      "הגנה על זכויות דיוניות חשובה במיוחד כאשר משתנים כללי המשחק המוסדיים.",
     ],
     distractors: [
       "עצמאות שיפוטית פוגעת מטבעה במשילות ולכן אין בה צורך.",
@@ -721,6 +761,9 @@ const EDUCATION_DEPARTMENT_TOPIC_CONFIG = {
   category: "פעילות ציבורית",
   kind: "activity",
   date: "2026-02-09",
+  sourceLabel: "אגף חינוך והדרכה - התנועה לאיכות השלטון",
+  sourceUrl: "https://mqg.org.il/activity_type/%D7%90%D7%92%D7%A3-%D7%94%D7%93%D7%A8%D7%9B%D7%94/",
+  sourceAnchorText: "מגוון הרצאות וסדנאות בנושאי חינוך לאקטיביזם ולערכי הדמוקרטיה",
   learn:
     "המשחק של אגף החינוך מתמקד בעקרונות יסוד של אזרחות פעילה, דמוקרטיה, אחריות ציבורית ושלטון חוק.",
   facts: [
@@ -790,8 +833,13 @@ const BASE_QUESTIONS = [
     learn:
       "התנועה הדגישה שהעתירה נשענה גם על היקף ציבורי רחב.",
     question:
-      "כמה עותרים ייצגה התנועה בעתירה, לפי ההודעה מ-04.08.2025?",
-    options: ["כ-1,500", "כ-5,000", "מעל 15,000", "מעל 150,000"],
+      "איזה היקף ציבורי הודגש בהודעת התנועה ביחס לעתירה מ-04.08.2025?",
+    options: [
+      "עתירה מקומית של כמה מאות משתתפים בלבד",
+      "עתירה של קבוצה מצומצמת בלי גיבוי ציבורי רחב",
+      "עתירה רחבה שבה התנועה ייצגה מעל 15,000 עותרים",
+      "עתירה סמלית ללא מצטרפים נוספים מעבר לעותר המרכזי",
+    ],
     answer: 2,
     explanation:
       "בהודעה נכתב כי התנועה ייצגה למעלה מ-15,000 עותרים.",
@@ -823,7 +871,7 @@ const BASE_QUESTIONS = [
     sources: [
       {
         label: "בג\"ץ יקבע דיון בעתירה נגד מינוי דוד זיני (03.10.2025)",
-        url: "https://mqg.org.il/%d7%91%d7%92%d7%a5-%d7%99%d7%a7%d7%91%d7%a2-%d7%93%d7%99%d7%95%d7%9f-%d7%91%d7%a2%d7%aa%d7%99%d7%a8%d7%aa-%d7%94%d7%aa%d7%a0%d7%95%d7%a2%d7%94-%d7%9c%d7%90%d7%99%d7%9b%d7%95%d7%aa-%d7%94/",
+        url: "https://mqg.org.il/?s=%D7%91%D7%92%22%D7%A5%20%D7%99%D7%A7%D7%91%D7%A2%20%D7%93%D7%99%D7%95%D7%9F%20%D7%91%D7%A2%D7%AA%D7%99%D7%A8%D7%94%20%D7%A0%D7%92%D7%93%20%D7%9E%D7%99%D7%A0%D7%95%D7%99%20%D7%93%D7%95%D7%93%20%D7%96%D7%99%D7%A0%D7%99%2003.10.2025",
       },
     ],
   },
@@ -848,7 +896,7 @@ const BASE_QUESTIONS = [
     sources: [
       {
         label: "בג\"ץ יקבע דיון בעתירה נגד מינוי דוד זיני (03.10.2025)",
-        url: "https://mqg.org.il/%d7%91%d7%92%d7%a5-%d7%99%d7%a7%d7%91%d7%a2-%d7%93%d7%99%d7%95%d7%9f-%d7%91%d7%a2%d7%aa%d7%99%d7%a8%d7%aa-%d7%94%d7%aa%d7%a0%d7%95%d7%a2%d7%94-%d7%9c%d7%90%d7%99%d7%9b%d7%95%d7%aa-%d7%94/",
+        url: "https://mqg.org.il/?s=%D7%9E%D7%99%D7%A0%D7%95%D7%99%20%D7%93%D7%95%D7%93%20%D7%96%D7%99%D7%A0%D7%99%207%20%D7%99%D7%9E%D7%99%D7%9D%20%D7%9C%D7%A4%D7%A0%D7%99%20%D7%94%D7%93%D7%99%D7%95%D7%9F%20%D7%AA%D7%92%D7%95%D7%91%D7%95%D7%AA%20%D7%9E%D7%A7%D7%93%D7%9E%D7%99%D7%95%D7%AA",
       },
     ],
   },
@@ -1207,7 +1255,7 @@ const BASE_QUESTIONS = [
     sources: [
       {
         label: "התראה בנושא תוכנית הגבלת טיסות יציאה (18.06.2025)",
-        url: "https://mqg.org.il/%d7%94%d7%aa%d7%a0%d7%95%d7%a2%d7%94-%d7%9c%d7%90%d7%99%d7%9b%d7%95%d7%aa-%d7%94%d7%a9%d7%9c%d7%98%d7%95%d7%9f-%d7%9e%d7%aa%d7%a8%d7%99%d7%a2%d7%94-%d7%94%d7%aa%d7%95%d7%9b%d7%a0%d7%99%d7%aa-%d7%9c/",
+        url: "https://mqg.org.il/?s=%D7%94%D7%AA%D7%A8%D7%90%D7%94%20%D7%91%D7%A0%D7%95%D7%A9%D7%90%20%D7%AA%D7%95%D7%9B%D7%A0%D7%99%D7%AA%20%D7%94%D7%92%D7%91%D7%9C%D7%AA%20%D7%98%D7%99%D7%A1%D7%95%D7%AA%20%D7%99%D7%A6%D7%99%D7%90%D7%94%2018.06.2025%20%D7%A1%D7%A2%D7%99%D7%A3%206",
       },
     ],
   },
@@ -3475,9 +3523,21 @@ function buildSingleQuestionVariant(questionText, prefixText) {
 function buildTelemarketingActivityQuestionPools() {
   const output = {};
   TELEMARKETING_ACTIVITY_TOPIC_CONFIGS.forEach((topicConfig) => {
-    const sourceFacts = TELEMARKETING_ACTIVITY_SOURCE_FACTS[topicConfig.id];
-    if (Array.isArray(sourceFacts) && sourceFacts.length >= 8) {
-      output[topicConfig.id] = buildSourceBackedTopicQuestions(topicConfig, sourceFacts, 30);
+    const sourceFacts = Array.isArray(TELEMARKETING_ACTIVITY_SOURCE_FACTS[topicConfig.id])
+      ? TELEMARKETING_ACTIVITY_SOURCE_FACTS[topicConfig.id]
+      : [];
+    const fallbackFacts = normalizeTopicFacts(topicConfig.facts, topicConfig)
+      .map((item) => ({
+        fact: item.text,
+        focus: item.focus,
+        sourceLabel: item.sourceLabel,
+        sourceUrl: item.sourceUrl,
+        sourceQuery: item.sourceQuery,
+        anchorText: item.sourceAnchorText || item.focus,
+      }));
+    const combinedFacts = mergeTopicFactPools(sourceFacts, fallbackFacts);
+    if (combinedFacts.length >= 8) {
+      output[topicConfig.id] = buildSourceBackedTopicQuestions(topicConfig, combinedFacts, 30);
       return;
     }
     output[topicConfig.id] = buildGeneratedTopicQuestions(topicConfig, 30);
@@ -3485,8 +3545,136 @@ function buildTelemarketingActivityQuestionPools() {
   return output;
 }
 
+function mergeTopicFactPools(...factPools) {
+  const output = [];
+  const seen = new Set();
+
+  factPools.flat().forEach((item) => {
+    const text = normalizeSpace(item?.fact || item?.text || item?.statement);
+    if (!text) {
+      return;
+    }
+    const key = text.toLowerCase();
+    if (seen.has(key)) {
+      return;
+    }
+    const tooSimilar = output.some((existing) => {
+      const existingText = normalizeSpace(existing?.fact || existing?.text || existing?.statement);
+      return calculateSemanticQuestionSimilarity(existingText, text) >= 0.68;
+    });
+    if (tooSimilar) {
+      return;
+    }
+    seen.add(key);
+    output.push(item);
+  });
+
+  return output;
+}
+
+function deriveTopicFactFocus(text, fallback = "הסוגיה המרכזית") {
+  const clean = normalizeSpace(String(text || "").replace(/[.!?]+$/g, ""));
+  if (!clean) {
+    return fallback;
+  }
+
+  const words = clean.split(" ").filter(Boolean);
+  const shortText = words.slice(0, Math.min(words.length, 8)).join(" ");
+  return trimForTextFragment(shortText) || fallback;
+}
+
+function normalizeTopicFacts(factsInput, config = {}) {
+  const defaultSourceLabel = normalizeSpace(config?.sourceLabel) || "מקור";
+  const defaultSourceUrl = normalizeSpace(config?.sourceUrl);
+  const defaultSourceQuery = normalizeSpace(config?.sourceQuery);
+  const defaultSourceAnchorText = trimForTextFragment(normalizeSpace(config?.sourceAnchorText));
+
+  return (Array.isArray(factsInput) ? factsInput : [])
+    .map((item) => {
+      if (typeof item === "string") {
+        const text = normalizeSpace(item);
+        if (!text) {
+          return null;
+        }
+        return {
+          text,
+          focus: deriveTopicFactFocus(text),
+          sourceLabel: defaultSourceLabel,
+          sourceUrl: defaultSourceUrl,
+          sourceQuery: defaultSourceQuery,
+          sourceAnchorText: defaultSourceAnchorText || trimForTextFragment(text),
+        };
+      }
+
+      const text = normalizeSpace(item?.text || item?.fact || item?.statement);
+      if (!text) {
+        return null;
+      }
+
+      return {
+        text,
+        focus:
+          trimForTextFragment(normalizeSpace(item?.focus) || normalizeSpace(item?.anchorText))
+          || deriveTopicFactFocus(text),
+        sourceLabel: normalizeSpace(item?.sourceLabel) || defaultSourceLabel,
+        sourceUrl: normalizeSpace(item?.sourceUrl || item?.canonicalUrl) || defaultSourceUrl,
+        sourceQuery: normalizeSpace(item?.sourceQuery) || defaultSourceQuery,
+        sourceAnchorText:
+          trimForTextFragment(
+            normalizeSpace(item?.sourceAnchorText)
+            || normalizeSpace(item?.anchorText)
+            || defaultSourceAnchorText,
+          )
+          || trimForTextFragment(text),
+      };
+    })
+    .filter(Boolean);
+}
+
+function buildTopicQuestionText(template, topicTitle, focusText, roundIndex = 0) {
+  const safeTemplate = normalizeSpace(template)
+    || "מה נכון לומר בנושא {topic} כאשר מתמקדים ב\"{focus}\"?";
+  const safeTopic = normalizeSpace(topicTitle) || "הנושא";
+  const safeFocus = normalizeSpace(focusText) || "הסוגיה המרכזית";
+  const angleText = roundIndex > 0
+    ? TOPIC_REPEAT_ANGLES[(roundIndex - 1) % TOPIC_REPEAT_ANGLES.length]
+    : "";
+  const resolved = safeTemplate
+    .replaceAll("{topic}", safeTopic)
+    .replaceAll("{focus}", safeFocus)
+    .replace(/\s+/g, " ")
+    .trim();
+  const withAngle = angleText
+    ? `${resolved.replace(/[?؟]+$/, "").trim()} ${angleText}?`
+    : resolved;
+
+  if (!withAngle) {
+    return `מה נכון לומר בנושא ${safeTopic}?`;
+  }
+
+  return /[?؟]$/.test(withAngle) ? withAngle : `${withAngle}?`;
+}
+
+function buildTopicQuestionSources(factRow, topicTitle) {
+  const sourceUrl = normalizeSpace(factRow?.sourceUrl);
+  const sourceQuery = normalizeSpace(factRow?.sourceQuery);
+  if (!sourceUrl && !sourceQuery) {
+    return [];
+  }
+
+  return [
+    {
+      label: normalizeSpace(factRow?.sourceLabel) || `מקור בנושא ${topicTitle}`,
+      url: sourceUrl || buildMqgSearchUrl(sourceQuery),
+      anchorText:
+        trimForTextFragment(normalizeSpace(factRow?.sourceAnchorText))
+        || trimForTextFragment(normalizeSpace(factRow?.focus))
+        || trimForTextFragment(normalizeSpace(factRow?.text)),
+    },
+  ];
+}
+
 function buildSourceBackedTopicQuestions(config, sourceFactsInput, totalQuestions) {
-  const sourceFacts = Array.isArray(sourceFactsInput) ? sourceFactsInput : [];
   const count = Math.max(1, Number(totalQuestions) || 1);
   const topicTitle = normalizeSpace(config?.shortTitle || config?.title || "הנושא");
   const learnText = normalizeSpace(config?.learn) || `רקע לנושא: ${topicTitle}`;
@@ -3494,15 +3682,7 @@ function buildSourceBackedTopicQuestions(config, sourceFactsInput, totalQuestion
   const baseKind = normalizeSpace(config?.kind) || "activity";
   const baseDate = normalizeSpace(config?.date) || "2026-02-09";
   const idPrefix = normalizeSpace(config?.id) || "topic";
-  const safeFacts = sourceFacts
-    .map((item) => ({
-      fact: normalizeSpace(item?.fact),
-      sourceLabel: normalizeSpace(item?.sourceLabel) || "מקור",
-      canonicalUrl: normalizeSpace(item?.canonicalUrl),
-      sourceQuery: normalizeSpace(item?.sourceQuery),
-      anchorText: trimForTextFragment(normalizeSpace(item?.anchorText) || normalizeSpace(item?.fact)),
-    }))
-    .filter((item) => item.fact);
+  const safeFacts = normalizeTopicFacts(sourceFactsInput, config);
 
   if (safeFacts.length < 4) {
     return buildGeneratedTopicQuestions(config, count);
@@ -3512,8 +3692,9 @@ function buildSourceBackedTopicQuestions(config, sourceFactsInput, totalQuestion
   for (let i = 0; i < count; i += 1) {
     const factRow = safeFacts[i % safeFacts.length];
     const promptTemplate = SOURCE_BACKED_TOPIC_PROMPTS[i % SOURCE_BACKED_TOPIC_PROMPTS.length];
-    const question = promptTemplate.replace("{topic}", topicTitle);
-    const correct = factRow.fact;
+    const roundIndex = Math.floor(i / safeFacts.length);
+    const question = buildTopicQuestionText(promptTemplate, topicTitle, factRow.focus, roundIndex);
+    const correct = factRow.text;
     const distractors = buildSourceBackedQuestionDistractors(correct, safeFacts, i);
     const options = shuffleArray([correct, ...distractors]).slice(0, 4);
     const answer = options.indexOf(correct);
@@ -3532,13 +3713,7 @@ function buildSourceBackedTopicQuestions(config, sourceFactsInput, totalQuestion
       options,
       answer,
       explanation: `${correct} זו הקביעה שמופיעה במקור שעליו מבוססת השאלה.`,
-      sources: [
-        {
-          label: factRow.sourceLabel,
-          url: factRow.canonicalUrl || buildMqgSearchUrl(factRow.sourceQuery || factRow.sourceLabel),
-          anchorText: factRow.anchorText,
-        },
-      ],
+      sources: buildTopicQuestionSources(factRow, topicTitle),
     });
   }
 
@@ -3549,7 +3724,7 @@ function buildSourceBackedQuestionDistractors(correctFact, sourceFacts, indexSee
   const unique = new Set();
   const output = [];
   const factsPool = sourceFacts
-    .map((item) => normalizeSpace(item?.fact))
+    .map((item) => normalizeSpace(item?.text || item?.fact))
     .filter((item) => item && item !== correctFact);
 
   for (let i = 0; i < factsPool.length && output.length < 3; i += 1) {
@@ -3575,7 +3750,8 @@ function buildSourceBackedQuestionDistractors(correctFact, sourceFacts, indexSee
 
 function buildGeneratedTopicQuestions(config, totalQuestions) {
   const count = Math.max(1, Number(totalQuestions) || 1);
-  const facts = (config?.facts || []).map((item) => normalizeSpace(item)).filter(Boolean);
+  const factEntries = normalizeTopicFacts(config?.facts, config);
+  const facts = factEntries.map((item) => item.text).filter(Boolean);
   const distractorPool = (config?.distractors || []).map((item) => normalizeSpace(item)).filter(Boolean);
   const stems = GENERATED_TOPIC_STEMS.slice();
   const topicTitle = normalizeSpace(config?.shortTitle || config?.title || "הנושא");
@@ -3585,15 +3761,17 @@ function buildGeneratedTopicQuestions(config, totalQuestions) {
   const baseDate = normalizeSpace(config?.date) || "2026-02-09";
   const idPrefix = normalizeSpace(config?.id) || "topic";
 
-  if (facts.length < 4) {
+  if (factEntries.length < 4) {
     return [];
   }
 
   const rows = [];
   for (let i = 0; i < count; i += 1) {
-    const fact = facts[i % facts.length];
+    const factRow = factEntries[i % factEntries.length];
+    const fact = factRow.text;
     const stem = stems[i % stems.length];
-    const question = `${stem.replace("{topic}", topicTitle)} (שאלה ממוקדת ${i + 1})`;
+    const roundIndex = Math.floor(i / factEntries.length);
+    const question = buildTopicQuestionText(stem, topicTitle, factRow.focus, roundIndex);
     const options = buildGeneratedQuestionOptions(fact, facts, distractorPool, i);
     const answer = options.indexOf(fact);
     if (answer < 0) {
@@ -3610,7 +3788,7 @@ function buildGeneratedTopicQuestions(config, totalQuestions) {
       options,
       answer,
       explanation: `${fact} זהו הדגש המרכזי שנדרש לזכור בנושא ${topicTitle}.`,
-      sources: [],
+      sources: buildTopicQuestionSources(factRow, topicTitle),
     });
   }
 
@@ -9610,7 +9788,11 @@ function isLikelyBrokenMqgSourceUrl(rawUrl) {
     }
   })();
 
-  return decoded.length < 4;
+  if (/%(?:d6|d7)%[0-9a-f]{2}/i.test(lastSegment) || /[\u0590-\u05FF]/.test(decoded)) {
+    return false;
+  }
+
+  return decoded.length < 3 && !/^\d+$/.test(decoded);
 }
 
 function buildDirectSourceHref(source, question) {
